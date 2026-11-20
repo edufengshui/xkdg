@@ -808,8 +808,14 @@ var FS_LUOPAN_MENU = [
       return (window.FlyingStarsQimen && window.FlyingStarsQimen.isAnnualOn && window.FlyingStarsQimen.isAnnualOn())
         ? '\u2733\ufe0f QMDJ annual chart \u00b7 ON' : '\u2733\ufe0f QMDJ annual chart'; } },
   { chart: true, v: 'qmdjring', btn: null, label: function () {
-      return (window.QMDJAnnual && window.QMDJAnnual.isRingOn && window.QMDJAnnual.isRingOn())
+      return (window.QMDJAnnual && window.QMDJAnnual.isRingOn && window.QMDJAnnual.isRingOn()
+              && !(window.QMDJAnnual.ringSrc && window.QMDJAnnual.ringSrc() === 'liqi'))
         ? '\u2733\ufe0f QMDJ annual chart \u00b7 ring ON' : '\u2733\ufe0f QMDJ annual chart \u00b7 ring'; } },
+  // Session 58 (Edu): the QMDJ Li Qi chart, its eight cells set around the luopan.
+  { chart: true, v: 'liqiring', btn: null, label: function () {
+      return (window.QMDJAnnual && window.QMDJAnnual.isRingOn && window.QMDJAnnual.isRingOn()
+              && window.QMDJAnnual.ringSrc && window.QMDJAnnual.ringSrc() === 'liqi')
+        ? '\ud83c\udfe0 QMDJ Li Qi \u00b7 ring ON' : '\ud83c\udfe0 QMDJ Li Qi \u00b7 ring'; } },
   { chart: true, v: 'dlr',      btn: 'fs-dlr-toggle', label: function (b) {
       var on = b && /\bON\b/.test(b.textContent);
       return '\ud83c\udc04 DLR annual chart' + (on ? ' ON' : ''); } }
@@ -1056,7 +1062,7 @@ function fsLuopanMenuAct(v){
     if (sel) sel.value = '';                    // snap back to the "Views" label
     if (!v || v === '_sep') return;
     // Anything that lives on the canvas needs the canvas visible.
-    if (v === 'time' || v === 'orient' || v === 'dlr' || v === 'qmdjring' || v === 'sha') _fsCloseAnyCard();
+    if (v === 'time' || v === 'orient' || v === 'dlr' || v === 'qmdjring' || v === 'liqiring' || v === 'sha') _fsCloseAnyCard();
     if (v === 'sha'){
       if (window.XKDGAfflictions) XKDGAfflictions.toggle(); else alert('time-afflictions.js is not loaded.');
       setTimeout(fsLuopanMenuSync, 60);
@@ -1082,6 +1088,15 @@ function fsLuopanMenuAct(v){
       return;
     }
 
+    if (v === 'liqiring'){
+      if (!window.QMDJAnnual || typeof window.QMDJAnnual.toggleRing !== 'function' || typeof window.qmdjLiQiRing !== 'function'){
+        alert('QMDJ Li Qi ring not available.');
+        return;
+      }
+      if (!window.QMDJAnnual.isRingOn()) _fsTurnOffDlrRing();
+      window.QMDJAnnual.toggleRing('liqi');
+      return;
+    }
     if (v === 'qmdjring'){
       if (!window.QMDJAnnual || typeof window.QMDJAnnual.toggleRing !== 'function'){
         alert('qmdj-annual.js is not loaded \u2014 add it to index.html.');
@@ -1117,7 +1132,7 @@ function fsLuopanMenuAct(v){
     // ...and the other way round: the DLR takes over the luopan, so the annual ring goes.
     if (v === 'dlr' && window.QMDJAnnual && typeof window.QMDJAnnual.isRingOn === 'function'
         && window.QMDJAnnual.isRingOn()) {
-      try { window.QMDJAnnual.toggleRing(); } catch (e) {}
+      try { window.QMDJAnnual.toggleRing(window.QMDJAnnual.ringSrc ? window.QMDJAnnual.ringSrc() : 'annual'); } catch (e) {}
     }
     if (v.indexOf('fc:') === 0){ fsPickFacingSource(parseInt(v.slice(3), 10)); setTimeout(fsLuopanMenuSync, 60); return; }
     if (v === 'm-cure' || v === 'm-wat'){

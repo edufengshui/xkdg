@@ -645,6 +645,22 @@
   window.liqiSet = setVal;
   window.liqiKind = setKind;
   window.liqiBack = back;
+  // Session 58 (Edu): the Li Qi chart around the luopan — its eight cells, cut out and set
+  // around the wheel (same ring as the QMDJ annual chart). Always the house LOADED in the
+  // app (the one the luopan shows), as a House, Qi mouth = the saved external door.
+  window.qmdjLiQiRing = function () {
+    var sp = _pick, sf = _ovFacing, spd = _ovPeriod, H = null;
+    try { _pick = null; _ovFacing = null; _ovPeriod = null; H = houseData(); }
+    finally { _pick = sp; _ovFacing = sf; _ovPeriod = spd; }
+    if (!H) return { ok: false, reason: 'load a house first' };
+    if (H.facing == null || H.facing === '' || !isFinite(parseFloat(H.facing)) || H.period == null || H.period === '')
+      return { ok: false, reason: 'this house has no facing or period saved' };
+    if (!H.doorPalace) return { ok: false, reason: 'no Qi mouth: add the palace of the external door in House Profiles' };
+    var r = compute('house', parseFloat(H.facing), H.period, H.doorPalace);
+    if (!r || r.error) return { ok: false, reason: (r && r.error) || 'chart unavailable' };
+    return { ok: true, hGan: r.hGan, hZhi: r.hZhi, ju: r.ju, dipan: dipanDeities(r),
+             head: 'QMDJ Li Qi \u00b7 Yang J\u00fa ' + r.ju + ' \u00b7 ' + r.hGan + r.hZhi + ' \u00b7 Qi mouth ' + r.zhiFuName };
+  };
   window.liqiInterpret = interpret;
   window.liqiRoom = roomSet;
   window.liqiRoomsToggle = roomsToggle;

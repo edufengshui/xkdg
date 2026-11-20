@@ -242,7 +242,10 @@
   var A = window.QMDJAnnual;
   if (!A) return;
 
-  var st = { ringOn: false, key: '', cached: null };
+  // Session 58: st.src = which chart the ring carries: 'annual' (default) or 'liqi' (the
+  // QMDJ Li Qi flying pan of the loaded house, data from window.qmdjLiQiRing()).
+  var st = { ringOn: false, key: '', cached: null, src: 'annual' };
+  function liqi() { try { return (typeof window.qmdjLiQiRing === 'function') ? window.qmdjLiQiRing() : null; } catch (e) { return null; } }
   // The eight outer palaces at their compass centres. Centre palace 5 has no direction.
   var RING = [{ p: 1, deg: 0, d: 'N' }, { p: 8, deg: 45, d: 'NE' }, { p: 3, deg: 90, d: 'E' },
               { p: 4, deg: 135, d: 'SE' }, { p: 9, deg: 180, d: 'S' }, { p: 2, deg: 225, d: 'SW' },
@@ -294,12 +297,16 @@
     var host = boxHost();
     if (!host) return;
     var wrap = host.parentNode;
-    var r = current();
+    var r = (st.src === 'liqi') ? liqi() : current();
     if (!r || !r.ok) { host.innerHTML = ''; return; }
 
     var cells = null;
     try {
-      if (typeof window.showQimenChart === 'function') {
+      if (st.src === 'liqi' && typeof window.showQimenChart === 'function') {
+        var resL = window.showQimenChart('2000-01-01', r.hGan, r.hZhi, null,
+          { cellsOnly: true, forceJuDun: { ju: r.ju, dun: 'yang' }, dipanDeities: r.dipan });
+        cells = resL && resL.cells;
+      } else if (typeof window.showQimenChart === 'function') {
         var res = window.showQimenChart('2000-01-01', r.hourStem, r.branch, null,
           { mode: 'rotating', cellsOnly: true, forceJuDun: { ju: r.ju, dun: r.dun } });
         cells = res && res.cells;
@@ -368,11 +375,12 @@
     var canReset = (typeof ctx.setTransform === 'function');
     try { ctx.save(); if (canReset) ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; } catch (e) {}
     try {
-      var r = current();
+      var isL = (st.src === 'liqi');
+      var r = isL ? liqi() : current();
       if (!r || !r.ok) {
         clearBoxes();
         ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        var msg = '\u26a0 QMDJ annual: ' + ((r && r.reason) || 'chart unavailable');
+        var msg = '\u26a0 ' + (isL ? 'QMDJ Li Qi: ' : 'QMDJ annual: ') + ((r && r.reason) || 'chart unavailable');
         ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.strokeText(msg, cx, 6);
         ctx.fillStyle = '#c62828'; ctx.fillText(msg, cx, 6);
         return;
@@ -380,8 +388,8 @@
       // Only the heading is painted on the canvas; the palaces are DOM boxes.
       ctx.textAlign = 'center'; ctx.textBaseline = 'top';
       ctx.font = 'bold 15px sans-serif';
-      var head = 'QMDJ annual \u00b7 Yang J\u00fa ' + r.ju + ' \u00b7 ' + r.hourGanZhi +
-                 ' \u00b7 facing ' + Math.round(r.facingDeg) + '\u00b0';
+      var head = isL ? r.head : ('QMDJ annual \u00b7 Yang J\u00fa ' + r.ju + ' \u00b7 ' + r.hourGanZhi +
+                 ' \u00b7 facing ' + Math.round(r.facingDeg) + '\u00b0');
       ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.strokeText(head, cx, 4);
       ctx.fillStyle = '#1b5e20'; ctx.fillText(head, cx, 4);
     } catch (e) {
@@ -392,8 +400,11 @@
     try { syncBoxes(cx, cy, outerR, ROT); } catch (e4) { try { console.warn('QMDJAnnual boxes', e4); } catch (e5) {} }
   }
 
-  function toggleRing() {
-    st.ringOn = !st.ringOn;
+  function toggleRing(src) {
+    src = (src === 'liqi') ? 'liqi' : 'annual';
+    // Ring already up with the OTHER chart: just swap the chart, the ring stays on.
+    if (st.ringOn && st.src !== src) st.src = src;
+    else { st.src = src; st.ringOn = !st.ringOn; }
     if (!st.ringOn) clearBoxes();
     // The ring lives in the band outside the star blocks, which only exists with the
     // compact luopan: at full size the wheel reaches the canvas edge and there is
@@ -416,5 +427,6 @@
   A.drawIfOn = drawIfOn;
   A.toggleRing = toggleRing;
   A.isRingOn = function () { return st.ringOn; };
+  A.ringSrc = function () { return st.src; };
   A.invalidate = invalidate;
 })();
