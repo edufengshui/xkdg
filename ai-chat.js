@@ -693,6 +693,10 @@
       'field). When that happens: tell the user the period star is imprisoned, name the liberation quadrant(s), and ASK in ' +
       'which of those quadrants the moving water sits; then present the favourable Qimen hours as "frees ws<period> toward ' +
       '<direction>" (flying chart). Never report the imprisoned star as simply absent.\n' +
+      '- ALWAYS ADVISE TO FREE IT (Edu, session 58): whenever a house\u2019s flying_stars shows imprisoned:true, in ANY ' +
+      'reading or advice about that house (flying stars, water, activation, a general Feng Shui reading, Li Qi) say FIRST ' +
+      'that freeing the prevailing water star from the centre is the most important intervention of the house, with the ' +
+      'two ways (toward the facing, or exchanging its place with the water star 5) - even if the user did not ask about it.\n' +
       '- MULTIPLE HOUSES ("each house" / "both houses"): handle them ONE AT A TIME. For each saved house of the active ' +
       'person: set_active_house to it, read its setup, then run the requested scan using THAT house\u2019s own saved water ' +
       'position (direction) and water star on its own chart, and report a SEPARATE result per house (label each clearly ' +
