@@ -19,6 +19,9 @@
 //  with this → Deploy.  No change needed in the app.
 //  To switch the students' model, edit MODEL and redeploy; per person use "m" in LICENCES.
 //
+//  v-session58: STREAMING — when the app sends stream:true the reply is passed on
+//  piece by piece (no more "Failed to fetch" after ~100 s on long readings).
+//
 //  v-session49: secrets moved to env (STATS_TOKEN, LICENCES) — see SECRETS below —
 //  and a DAILY LIMIT per licence (DAILY_CAP_USD).
 //
@@ -572,6 +575,48 @@ export default {
       });
     } catch (e) {
       return json({ error: 'Upstream request failed: ' + ((e && e.message) || e) }, 502, origin);
+    }
+
+    // ---- STREAMING (session 58) ------------------------------------------
+    // A long reply (Opus thinking + a long reading) can take more than 100 s;
+    // Cloudflare drops a request that sends nothing for ~100 s ("Failed to fetch").
+    // When the app asks stream:true, the text is passed on piece by piece as it is
+    // written, so the connection never goes silent. Usage is read from the same
+    // stream in the background (message_start + message_delta) for the counter.
+    if (body.stream === true && resp.ok && resp.body) {
+      const [toClient, toCount] = resp.body.tee();
+      const countIt = (async () => {
+        try {
+          const rd = toCount.getReader(), dec = new TextDecoder();
+          let buf = '', model = body.model; const u = {};
+          for (;;) {
+            const r = await rd.read(); if (r.done) break;
+            buf += dec.decode(r.value, { stream: true });
+            let k;
+            while ((k = buf.indexOf('\n')) >= 0) {
+              const line = buf.slice(0, k).trim(); buf = buf.slice(k + 1);
+              if (line.indexOf('data:') !== 0) continue;
+              let ev; try { ev = JSON.parse(line.slice(5)); } catch (e) { continue; }
+              if (ev.type === 'message_start' && ev.message) {
+                model = ev.message.model || model;
+                Object.assign(u, ev.message.usage || {});
+              } else if (ev.type === 'message_delta' && ev.usage) {
+                Object.keys(ev.usage).forEach(x => { if (ev.usage[x] != null) u[x] = ev.usage[x]; });
+              }
+            }
+          }
+          console.log('XKDG sid=' + (sid || 'anon') + ' model=' + model + ' (stream)' +
+            ' in=' + (u.input_tokens || 0) + ' out=' + (u.output_tokens || 0) +
+            ' cache_write=' + (u.cache_creation_input_tokens || 0) +
+            ' cache_read=' + (u.cache_read_input_tokens || 0));
+          if (u.output_tokens) await bumpUsage(env, sid, u, model);
+        } catch (e) { /* counting never breaks the reply */ }
+      })();
+      if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(countIt);
+      return new Response(toClient, {
+        status: resp.status,
+        headers: Object.assign({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' }, corsHeaders(origin))
+      });
     }
 
     // Pass Anthropic's JSON straight back (with CORS so the browser accepts it).

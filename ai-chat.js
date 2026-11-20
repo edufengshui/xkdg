@@ -8420,29 +8420,83 @@
       // Session 58: a "Failed to fetch" (connection dropped) was shown at once, with no
       // retry. Now, like the chat, the same request is sent again twice, and the error
       // says how many seconds passed (tells a timeout from an immediate network failure).
+      // Session 58: the reply is now STREAMED (stream:true): the text arrives piece by piece,
+      // so a long Opus reading no longer hits Cloudflare's ~100 s silence limit, and
+      // opts.onText(textSoFar) can show it while it is written. Works with an old Worker
+      // too (it returns the whole stream at the end, parsed the same way) and with a
+      // plain JSON reply. A network failure is retried only if it came quickly (a long
+      // request that dropped has already been paid for: it is not sent again).
+      var onText = opts && typeof opts.onText === 'function' ? opts.onText : null;
       var t0 = Date.now();
       var post = function (body, n) {
+        var t1 = Date.now();
         return fetch(target, { method: 'POST', headers: headers, body: body }).catch(function (err) {
-          if (n >= 2) {
-            var sec = Math.round((Date.now() - t0) / 1000);
-            throw new Error(String(err && err.message || err) + ' (after ' + sec + ' s, 3 tries)');
+          var sec = Math.round((Date.now() - t0) / 1000);
+          if (n >= 2 || Date.now() - t1 > 20000) {
+            throw new Error(String(err && err.message || err) + ' (after ' + sec + ' s, ' + (n + 1) + (n ? ' tries)' : ' try)'));
           }
           return new Promise(function (res) { setTimeout(res, 2000 * (n + 1)); }).then(function () { return post(body, n + 1); });
         });
       };
+      // Parse SSE lines into { text, stop_reason, error }.
+      var sse = function () {
+        var st = { text: '', stop: null, error: null, buf: '' };
+        st.feed = function (chunk, last) {
+          st.buf += chunk;
+          var k;
+          while ((k = st.buf.indexOf('\n')) >= 0 || (last && st.buf.length)) {
+            var line;
+            if (k >= 0) { line = st.buf.slice(0, k); st.buf = st.buf.slice(k + 1); } else { line = st.buf; st.buf = ''; }
+            line = line.trim();
+            if (line.indexOf('data:') !== 0) continue;
+            var ev; try { ev = JSON.parse(line.slice(5)); } catch (e) { continue; }
+            if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') {
+              st.text += ev.delta.text || ''; if (onText) { try { onText(st.text); } catch (e) {} }
+            } else if (ev.type === 'message_delta' && ev.delta && ev.delta.stop_reason) {
+              st.stop = ev.delta.stop_reason;
+            } else if (ev.type === 'error') {
+              st.error = (ev.error && ev.error.message) || 'Stream error';
+            }
+          }
+        };
+        return st;
+      };
+      var readReply = function (r) {
+        var ct = (r.headers && r.headers.get && r.headers.get('content-type')) || '';
+        if (/event-stream/i.test(ct) && r.body && r.body.getReader) {
+          var st = sse(), rd = r.body.getReader(), dec = new TextDecoder();
+          var pump = function () {
+            return rd.read().then(function (x) {
+              if (x.done) { st.feed(dec.decode(), true); return { stream: st }; }
+              st.feed(dec.decode(x.value, { stream: true }), false); return pump();
+            });
+          };
+          return pump();
+        }
+        return r.text().then(function (raw) {
+          var t = String(raw || '').replace(/^\s+/, '');
+          if (/^(event|data):/.test(t)) { var st = sse(); st.feed(t, true); return { stream: st }; }
+          try { return { json: JSON.parse(t) }; } catch (e) { return { json: { error: 'Bad response (HTTP ' + r.status + ')' } }; }
+        });
+      };
       var ask = function (mt, again) {
-        var req = { model: MODEL, max_tokens: mt, system: system, messages: [{ role: 'user', content: text }] };
+        var req = { model: MODEL, max_tokens: mt, system: system, messages: [{ role: 'user', content: text }], stream: true };
         if (effort) req.output_config = { effort: effort };
-        return post(JSON.stringify(req), 0).then(function (r) {
-          return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; });
-        }).then(function (d) {
-          if (!d) throw new Error('No response');
-          if (d.error && effort && /output_config|effort/i.test(String(d.error.message || d.error))) { effort = null; return ask(mt, again); }
-          if (d.error) throw new Error(d.error.message || d.error);
-          var t = Array.isArray(d.content)
-            ? d.content.map(function (c) { return c && c.type === 'text' ? c.text : ''; }).filter(Boolean).join('\n') : '';
-          if (!t && again && d.stop_reason === 'max_tokens') return ask(mt * 2, false);
-          if (!t) throw new Error('Empty reply' + (d.stop_reason ? ' (' + d.stop_reason + ')' : ''));
+        return post(JSON.stringify(req), 0).then(readReply).then(function (o) {
+          var err, t, stop;
+          if (o.stream) { err = o.stream.error; t = o.stream.text; stop = o.stream.stop; }
+          else {
+            var d = o.json;
+            if (!d) throw new Error('No response');
+            err = d.error ? (d.error.message || d.error) : null;
+            t = Array.isArray(d.content)
+              ? d.content.map(function (c) { return c && c.type === 'text' ? c.text : ''; }).filter(Boolean).join('\n') : '';
+            stop = d.stop_reason;
+          }
+          if (err && effort && /output_config|effort/i.test(String(err))) { effort = null; return ask(mt, again); }
+          if (err) throw new Error(err);
+          if (!t && again && stop === 'max_tokens') return ask(mt * 2, false);
+          if (!t) throw new Error('Empty reply' + (stop ? ' (' + stop + ')' : ''));
           return t;
         });
       };

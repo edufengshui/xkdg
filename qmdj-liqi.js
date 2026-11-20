@@ -390,7 +390,7 @@
     if (!data) { out.innerHTML = '<span style="color:#c0392b;">Chart data not available.</span>'; return; }
     if (btn) btn.disabled = true;
     out.innerHTML = '<span style="color:#888;">⏳ Interpreting the chart…</span>';
-    window.XKDGAIOneShot(READ_GUIDE, 'Interpret this QMDJ Li Qi permanent chart.\n\n' + data + '\n\n' + replyLang(), 3500, { effort: 'low' })
+    window.XKDGAIOneShot(READ_GUIDE, 'Interpret this QMDJ Li Qi permanent chart.\n\n' + data + '\n\n' + replyLang(), 3500, { effort: 'low', onText: function (t) { out.innerHTML = md(t) + ' <span style="color:#888;">⏳</span>'; } })
       .then(function (t) { out.innerHTML = md(t); })
       .catch(function (e) { out.innerHTML = '<span style="color:#c0392b;">⚠ ' + String(e && e.message || e) + '</span>'; })
       .then(function () { if (btn) btn.disabled = false; });
