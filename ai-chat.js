@@ -8403,7 +8403,10 @@
   // other modules (e.g. the QMDJ Li Qi interpretation) can ask the model without touching
   // the conversation. Resolves with the reply text; rejects on any failure.
   try {
-    window.XKDGAIOneShot = function (system, text, maxTokens) {
+    window.XKDGAIOneShot = function (system, text, maxTokens, opts) {
+      // Session 58: opts.effort ('low' | 'medium' | 'high') sets output_config.effort — how
+      // much the model thinks before writing. Default (none) = the model's own default (high).
+      var effort = opts && opts.effort;
       var own = getOwnKey();
       var target = own ? 'https://api.anthropic.com/v1/messages' : getUrl();
       var headers = own
@@ -8428,11 +8431,13 @@
         });
       };
       var ask = function (mt, again) {
-        return post(JSON.stringify({ model: MODEL, max_tokens: mt, system: system,
-                                     messages: [{ role: 'user', content: text }] }), 0).then(function (r) {
+        var req = { model: MODEL, max_tokens: mt, system: system, messages: [{ role: 'user', content: text }] };
+        if (effort) req.output_config = { effort: effort };
+        return post(JSON.stringify(req), 0).then(function (r) {
           return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; });
         }).then(function (d) {
           if (!d) throw new Error('No response');
+          if (d.error && effort && /output_config|effort/i.test(String(d.error.message || d.error))) { effort = null; return ask(mt, again); }
           if (d.error) throw new Error(d.error.message || d.error);
           var t = Array.isArray(d.content)
             ? d.content.map(function (c) { return c && c.type === 'text' ? c.text : ''; }).filter(Boolean).join('\n') : '';
