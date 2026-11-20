@@ -210,6 +210,7 @@
     'HOW TO READ (from the chapter guidelines):',
     '- Read each palace like the QMDJ Annual chart: heaven stem over earth stem (formations, combinations, clashes, penalties), the door, the star, the spirit, and the palace element (whether door / star / stem suit the palace, 12 growth stages of the wonders 乙丙丁).',
     '- The Qi mouth / door palace and the facing palace matter most: they show the quality of the qi entering the space. The sitting palace shows the support behind.',
+    '- Voids (Kong Wang / empty branches) do NOT count in a QMDJ Feng Shui (Li Qi) chart: never mention them.',
     '- Terminology (Edu): in Italian the sitting is "seduta" (palazzo della seduta) — NEVER "schiena"; the facing is "facciata". In French: "assise" and "façade".',
     '- Zhi Fu (Commander) and Zhi Shi (the door of the Commander) are key points.',
     '- QI FLOW of a palace (Edu, 20/11/2026) - ALWAYS trace where the qi of a palace ends up, along the chain: palace element (earth, yin, the START) -> earth-plate stem -> door -> heaven stem and star (heaven, yang, the ARRIVAL). The chart data gives this chain ready for every palace on its "Qi flow" line: use it, do not work the elements out again.',
@@ -338,7 +339,7 @@
     lines.push('Space: ' + (kind === 'business' ? 'BUSINESS' : 'HOUSE') + (H.name ? ' "' + H.name + '"' : ''));
     lines.push('Period ' + r.ju + ' -> Yang Ju ' + r.ju + '. Facing ' + r.facing + ' deg (palace ' + facePal + '), sitting ' + r.sitting + ' deg (palace ' + sitPal + ').');
     lines.push('Fu Shou ' + r.xunHead + ' ' + r.yi + ' (' + r.mountain + '). Zhi Fu palace = ' + r.zhiFu + (kind === 'house' ? ' (Qi mouth / door)' : ' (facing palace)') + '. Chart hour ' + r.hGan + r.hZhi + '.');
-    if (c.voidBranches && c.voidBranches.length) lines.push('Void (Kong Wang) branches: ' + c.voidBranches.join(' ') + ' (palaces ' + (c.voidPalaces || []).join(', ') + ').');
+    // Session 58 (Edu): voids do not count in a QMDJ Feng Shui (Li Qi) chart -> not given to the model.
     lines.push('');
     lines.push('PALACES (heaven stem / earth stem, star, door, spirit, Di Pan spirit):');
     [4, 9, 2, 3, 5, 7, 8, 1, 6].forEach(function (n) {
