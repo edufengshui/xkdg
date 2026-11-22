@@ -448,6 +448,47 @@
   var XK_LBL = { am: 'annual line of the month', m: 'month line', lord: 'Lord of the Block', d: 'day line (primary)', s2: 'day line (outcome)' };
   function xkRel(key, male) { var r = xkRels(key, male); return r ? r[0][0] : null; } // the main relation (★)
   function xkRel2(key, male) { var r = xkRels(key, male); return r && r[1] ? r[1] : null; } // the second relation [rel, weight]
+  // Luck · $ — windfall: lottery ticket, prize, a win (Edu 22/11/2026; from eight lottery and gambling wins, study notes
+  // claude/hlls-occasionometro.md in the HLLS project). Chosen next to PURPOSE: 🍀 Luck → "$" (localStorage xkdg_xk_variant_luck = money).
+  // 1) PERIOD (the switch, lasts the 6 or 9 years of the cycle line): ON if the person controls the other trigram of the period
+  //    hexagram (stronger if that trigram is also the Heaven or Earth Luck); one-element hexagram: ON if the person sits in a
+  //    Luck and the other trigram is a Luck too; AGAINST if the person is the one controlled; OFF otherwise.
+  // 2) WINDOW: month line Wealth, Lord of the Block Wealth, Wealth trigram in the block hexagram (1 each).
+  // 3) DAY: Wealth trigram in the day hexagram; day line Wealth, primary or outcome (1 each).
+  // Levels: good = day ≥ 1 and window ≥ 1; strong = day ≥ 1 and window ≥ 2; best = day 2 and window ≥ 2.
+  // A Wealth trigram that is the opposite of a Luck from the year does not count (as for the Wealth purpose, Edu 12/11).
+  // ☯ = level (0–3) + 1 with the period on, − 1 with the period against. Weights and thresholds chosen by Claude.
+  // CAUTION: on the eight winners only the PERIOD stands out from random days; window and day are not proven yet.
+  var MONEY_LV = ['', 'good', 'strong', 'best'];
+  function moneyMeter(ctx, p, pers, Ls) {
+    var hx = p.hx, ln = p.per.line, mine = ln <= 3 ? hx.lower : hx.upper, oth = ln <= 3 ? hx.upper : hx.lower, K = ctx.prof.K, KS = ['heaven', 'earth', 'fame'];
+    function lkOf(t) { return KS.filter(function (k) { return K[k].t === t; }); }
+    function opOf(t) { return KS.filter(function (k) { return K[k].op === t; }); }
+    function lkTxt(t) { var a = lkOf(t); return a.length ? ', also your ' + a.map(cap).join(' and ') + ' Luck' : ''; }
+    var one = TRI_EL[hx.upper] === TRI_EL[hx.lower], ro = rel(pers, TRI_EL[oth]), per = 0, perTxt;
+    if (!one) {
+      if (ro === 'W') { var he = lkOf(oth).filter(function (k) { return k !== 'fame'; }); per = he.length ? 2 : 1;
+        perTxt = 'ON: in ' + mine + ' you control ' + oth + ' (Wealth' + lkTxt(oth) + ') in the period hexagram ' + hx.n; }
+      else if (ro === 'G') { per = -1; perTxt = 'AGAINST: in ' + mine + ' you are controlled by ' + oth + ' (Ghost) in the period hexagram ' + hx.n; }
+      else perTxt = 'OFF: in the period hexagram ' + hx.n + ' the other trigram ' + oth + ' is ' + REL[ro] + ', not Wealth';
+    } else if (lkOf(mine).length && lkOf(oth).length) { per = 1; perTxt = 'ON: one-element period hexagram ' + hx.n + ' with a Luck in both trigrams (' + mine + ', ' + oth + ')'; }
+    else perTxt = 'OFF: the period hexagram ' + hx.n + ' has one element only (' + pers + '), no trigram to control and no Luck in both trigrams';
+    var why = [], skip = [];
+    function wTri(h, name) { var n = 0; [[h.upper, 'upper'], [h.lower, 'lower']].forEach(function (x) {
+        if (rel(pers, TRI_EL[x[0]]) !== 'W') return;
+        var o = opOf(x[0]); if (o.length) { skip.push(x[0] + ' (' + x[1] + ', ' + name + ' hexagram) is Wealth but the opposite of your ' + o.map(cap).join(' and ') + ' Luck: not counted'); return; }
+        n++; why.push('Wealth trigram ' + x[0] + ' ' + x[1] + ' in the ' + name + ' hexagram' + lkTxt(x[0])); });
+      return n ? 1 : 0; }
+    var win = 0, day = 0;
+    if (Ls[1].r === 'W') { win++; why.push('month line ' + Ls[1].b + ' Wealth'); }
+    if (Ls[2].r === 'W') { win++; why.push('Lord of the Block ' + Ls[2].b + ' Wealth'); }
+    win += wTri(p.daily.block, 'block');
+    day += wTri(p.daily.hex, 'day');
+    if (Ls[3].r === 'W' || Ls[4].r === 'W') { day++; why.push('day line Wealth (' + (Ls[3].r === 'W' ? 'primary ' + Ls[3].b : 'outcome ' + Ls[4].b) + ')'); }
+    var lv = day >= 2 && win >= 2 ? 3 : day >= 1 && win >= 2 ? 2 : day >= 1 && win >= 1 ? 1 : 0;
+    return { per: per, perTxt: perTxt, win: win, day: day, lv: lv, level: MONEY_LV[lv], why: why, skip: skip,
+      adj: Math.max(-3, Math.min(3, lv + (per > 0 ? 1 : per < 0 ? -1 : 0))) };
+  }
   function thread(ctx, Pe, lon, key) {
     var p = predict(ctx.R, Pe, lon); if (p.none) return null;
     var pers = persona(p.hx, p.per.line), T = [Pe.year[1], Pe.month[1], Pe.day[1]], yv = natalVoids(ctx.Pn).list, mb0 = ctx.Pn.month[1];
@@ -577,12 +618,13 @@
       var lvl = sig.length >= 5 ? 'severe' : sig.length === 4 ? (six.length ? 'critical' : 'light') : null;
       if (lvl) alarm = { level: lvl, n: sig.length, sig: sig, six: six };
     }
+    var money = key === 'luck' && xkVar('luck') === 'money' ? moneyMeter(ctx, p, pers, Ls) : null; // Luck · $ (Edu 22/11/2026)
     var adj = 0;
-    if (key === 'luck') adj = LT.s;
+    if (key === 'luck') adj = money ? money.adj : LT.s;
     else if (key === 'cure') { if (need) [[p.daily.hex, 2, 'day'], [p.daily.block, 1, 'block']].forEach(function (x) { var q = yy(x[0]); if (q) { adj += q === need ? x[1] : -x[1]; cure.push(x[2] + ' hexagram: two ' + q + ' trigrams' + (q === need ? ' (what the chart needs)' : ' (the chart has too much of it)')); } }); }
     else adj = Math.round(t / 3);
     adj = Math.max(-3, Math.min(3, adj));
-    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, X2: X2, w2: w2, A2: A2, on2: on2, price2: price2, variant: XK_FALL[key] && key !== 'relationship' ? (xkVar(key) || XK_VDEF[key]) : null, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, tri: tri, luck: lk, opp: opp, luckD: LD, am: { n: p.id.year[0], l: p.month.line, s: amS }, crit: crit, surprise: surprise, turn: turn, dayLuck: !!(DAY_LUCK[key] && ctx.profD), need: need, cure: cure, yv: yv, loss: loss, steal: steal, collab: collab, alarm: alarm, sd: sd, so: so, chain: chain, critE: critE };
+    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, X2: X2, w2: w2, A2: A2, on2: on2, price2: price2, variant: XK_FALL[key] && key !== 'relationship' ? (xkVar(key) || XK_VDEF[key]) : null, lines: Ls, t: t, adj: adj, money: money, on: on, price: price, later: later, tri: tri, luck: lk, opp: opp, luckD: LD, am: { n: p.id.year[0], l: p.month.line, s: amS }, crit: crit, surprise: surprise, turn: turn, dayLuck: !!(DAY_LUCK[key] && ctx.profD), need: need, cure: cure, yv: yv, loss: loss, steal: steal, collab: collab, alarm: alarm, sd: sd, so: so, chain: chain, critE: critE };
   }
   // Hexagram of the hour (Edu 12/11 evening, version A, provisional): line k of the day hexagram rules two hours on the
   // branches (line 1 = 子丑 … line 6 = 戌亥; the 子 hour from 23:00 belongs to the next day). Odd hour = the day hexagram
@@ -1256,7 +1298,8 @@
       if (c.ok) { a.push('✚ day to correct ' + REL[c.problem] + ' (' + c.how + ')'); a.push('Do: ' + c.todo); a.push(c.hours && c.hours.length ? 'hour ' + c.hours.slice(0, 2).map(function (x) { return x.pillar + ' ' + x.tst; }).join(', ') : 'no particular hour'); }
       return a.join(' · '); }
     if (th.fav && th.fav.ok) a.push((th.fav.stars ? (th.fav.stars === 2 ? '★★ ' : '★ ') : '') + th.fav.level + ' for ' + REL[th.fav.X]);
-    if (th.key === 'luck') { if (th.luck.length) a.push(th.luck.length + ' Luck'); if (th.opp.length) a.push(th.opp.length + ' opposite');
+    if (th.key === 'luck' && th.money) { var M$ = th.money; a.push('$ ' + (M$.lv ? M$.level : 'no window') + ' (window ' + M$.win + '/3, day ' + M$.day + '/2)'); a.push('period ' + (M$.per > 0 ? 'on' : M$.per < 0 ? 'against' : 'off')); }
+    else if (th.key === 'luck') { if (th.luck.length) a.push(th.luck.length + ' Luck'); if (th.opp.length) a.push(th.opp.length + ' opposite');
       if (th.luckD) a.push('day Luck ' + (th.luckD.s > 0 ? '+' : th.luckD.s < 0 ? '−' : '±') + Math.abs(th.luckD.s)); }
     else if (th.key === 'cure') { if (th.adj) a.push(th.adj > 0 ? 'brings the ' + th.need + ' the chart needs' : 'against the balance (chart needs ' + th.need + ')'); }
     else if (th.X) { if (th.on.length) a.push(REL[th.X] + ' on ' + th.on.map(function (L) { return L.b + (L.hidden ? ' (hidden)' : ''); }).join(' ')); if (th.X2 && th.on2.length) a.push(REL[th.X2] + ' on ' + th.on2.map(function (L) { return L.b; }).join(' ')); if (th.tri && th.tri.plus.length) a.push(REL[th.X] + ' in ' + th.tri.plus.length + ' trigram' + (th.tri.plus.length > 1 ? 's' : '')); if (th.price.length || (th.tri && th.tri.minus.length)) a.push('price: ' + REL[th.A]); if (th.tri && th.tri.gOn) a.push('Wealth feeds the Ghost'); if (th.later.length) a.push('fruits later');
@@ -1299,6 +1342,12 @@
           + '<br>' + ([f.hours.actor ? 'the actor enters ' + f.hours.actor.pillar + ' ' + f.hours.actor.tst : '', f.hours.answer ? 'the answer ' + f.hours.answer.pillar + ' ' + f.hours.answer.tst : ''].filter(Boolean).join(' · ') || 'No particular hour')
           : '<span style="color:#777;">not favoured: ' + esc(f.no.join('; ')) + '</span>') + '</div>'; }
     if (th.key === 'luck') {
+      if (th.money) { var M = th.money;
+        box += '<div style="margin-bottom:5px;padding-bottom:4px;border-bottom:1px dashed #ccc;"><b>$ Windfall</b> (ticket, prize) · <span style="' + (M.lv >= 2 ? G : '') + 'font-weight:600;">' + (M.lv ? M.level : 'no window') + '</span> · window ' + M.win + '/3 · day ' + M.day + '/2'
+          + '<div style="' + (M.per > 0 ? G : M.per < 0 ? Rd : 'color:#777;') + '">Period ' + esc(M.perTxt) + '</div>'
+          + (M.why.length ? '<div style="' + G + '">▲ ' + esc(M.why.join(' · ')) + '</div>' : '<div>No Wealth on the month line, the Lord, the day line or in the trigrams of block and day.</div>')
+          + (M.skip.length ? '<div style="color:#777;">' + esc(M.skip.join(' · ')) + '</div>' : '')
+          + '<div style="font-size:10px;color:#999;">Days that resemble those of eight winners, not a probability of winning. Only the period is supported by the cases; window and day are not proven yet. The ☯ score uses this reading.</div></div>'; }
       box += th.luck.length ? '<div style="' + G + '">▲ ' + esc(th.luck.join(' · ')) + '</div>' : '<div>None of the three Luck in the hexagrams of this day.</div>';
       if (th.opp.length) box += '<div style="' + Rd + '">▼ ' + esc(th.opp.join(' · ')) + '</div>';
       if (th.luckD) { var D2 = th.luckD;
