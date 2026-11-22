@@ -4313,6 +4313,7 @@ function xkdgChartsToggle(){
         + '<button onclick="xkdgChartsPick(\'qmdjday\')" style="' + BTN + 'background:#283593;">📆 QMDJ Day chart</button>'
         + '<button onclick="xkdgChartsPick(\'qmdjmonth\')" style="' + BTN + 'background:#1a237e;">🗓 QMDJ Month chart</button>'
         + '<button onclick="xkdgChartsPick(\'qmdjmulti\')" style="' + BTN + 'background:#311b92;">🧩 QMDJ Multiple charts</button>'
+        + (window.openQmdjLifeChart ? '<button onclick="xkdgChartsPick(\'qmdjlife\')" style="' + BTN + 'background:#4527a0;">👤 QMDJ Life chart</button>' : '')   // session 58
         + (window.openHeluoLishu ? '<button onclick="xkdgChartsPick(\'heluo\')" style="' + BTN + 'background:#00695c;">☯ He Luo Li Shu 河洛理數</button>' : '')   // session 53: Edu only for now
         + sect('On the luopan · current house')
         + '<button onclick="xkdgChartsPick(\'liqi\')" style="' + BTN + 'background:#8a6a1f;">\ud83c\udfe0 QMDJ Li Qi \u00b7 Flying Pan</button>';
@@ -4337,6 +4338,7 @@ function xkdgChartsPick(v){
   if (v === 'qmdjday')   { if (window.openQmdjDayChart) openQmdjDayChart(); return; }
   if (v === 'qmdjmonth') { if (window.openQmdjMonthChart) openQmdjMonthChart(); return; }
   if (v === 'qmdjmulti') { if (window.openQmdjMultiChart) openQmdjMultiChart(); return; }
+  if (v === 'qmdjlife')  { if (window.openQmdjLifeChart) openQmdjLifeChart(); return; }
   if (v === 'heluo')     { if (window.openHeluoLishu) openHeluoLishu(); return; }
   if (v === 'liqi')     { if (window.openLiQiPanel) openLiQiPanel(); return; }
   try {
