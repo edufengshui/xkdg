@@ -92,6 +92,9 @@
   function reading(p, L) {
     var E = window.XKDGLifeReading, P = L.pillars, t = P.meta.tst; _read = null;
     if (!E) return '';
+    // Session 59 (Edu 22/11/2026): the written reading is for Edu only for now, like He Luo
+    // (app-bazi.js xkdgHeluoAllowed). The students keep the chart.
+    try { if (typeof window.xkdgHeluoAllowed === 'function' && !window.xkdgHeluoAllowed()) return ''; } catch (e) { return ''; }
     var g = gender(p.name);
     var sel = '<select onchange="qmdjLifeGender(this.value)" style="font-size:12px;margin-left:6px;">'
       + '<option value=""' + (!g ? ' selected' : '') + '>gender?</option><option value="M"' + (g === 'M' ? ' selected' : '') + '>male</option>'
