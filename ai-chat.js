@@ -494,7 +494,8 @@
       '- FOUNTAIN A / B (fontana, fontanella; A = bed, by DAY; B = bedroom door, by NIGHT) are the Vienna bedroom fountains ' +
       '(shelly_house vienna-letto / vienna-porta, listed as shelly_fountains by get_house_setup). Each has its own Shelly plug: ' +
       'program_aquarium_light(house:"vienna-letto" / "vienna-porta") gives the ON/OFF plan (preview), commit:true deposits it, ' +
-      'aquarium_light / aquarium_plan switch and read them; load the home tools with load_tools if they are missing. Never say a fountain ' +
+      'aquarium_light / aquarium_plan switch and read them; load the home tools with load_tools if they are missing. When the user asks to switch a ' +
+      'fountain on at a GIVEN hour ("alle Zi", "at Chou tonight"), pass hour:"zi" (etc.) to program_aquarium_light: the user\u2019s hour replaces the hour of the rule for that one period. Never say a fountain ' +
       'does not exist before checking shelly_fountains.\n' +
       '- "... in the [NAME] house" (e.g. "the Vienna house"): call get_house_setup(house_name) FIRST - it returns the ' +
       'whole house in one shot (facing/period, aquariums with their direction + water star, ' +
@@ -1741,6 +1742,8 @@
           house: { type: 'string', description: 'Which plug to program: the aquarium of tuoro / vienna, or a STUDENT house whose Shelly plug was connected in the app (house card \u2630 \u2192 \ud83d\udd0c Aquarium plug; use the house name as saved \u2014 get_app_state.shelly_houses lists them), or a Vienna bedroom FOUNTAIN on its own Shelly: vienna-letto = Fountain A (bed, 222°, by DAY only), vienna-porta = Fountain B (bedroom door, 227°, by NIGHT only). A fountain plan (session 57) gives ONE switch-on EVERY day: A like the Vienna aquarium (best positive hour Mao..Xu, Mao when none, OFF at the start of Hai), B the opposite (best positive hour Hai..Mao, Hai when none, OFF at the start of Chen); positive = the fountain hexagram communicates with the hour and/or the day. It runs to the next solar month.' },
           mode: { type: 'string', enum: ['block', 'windows'], description: 'How the light is scheduled. "block" (DEFAULT, the long-standing behaviour) = ONE hour per day, light stays ON until 23:00, blocks can span several days. "windows" = the light is ON only for the two hours of EACH favourable hour of the day and is switched off in between; several windows a day are normal, and consecutive favourable hours are merged into one longer window. Use "windows" only when the user asks for it for that house.' },
           days: { type: 'integer', description: 'OMIT it (default): the plan runs until the EXACT start of the next solar month (next Jie), Edu\'s rule. Pass a number only if the user asks for a specific number of days.' },
+          hour: { type: 'string', description: 'FOUNTAINS only (vienna-letto / vienna-porta). The user CHOOSES the Chinese hour of ONE switch-on instead of the best hour of the rule: zi, chou, yin, mao, chen, si, wu, wei, shen, you, xu, hai. Use it whenever the user asks to switch a fountain on at a given hour ("accendi la fontana all\'ora Zi", "programma l\'accensione a Chou stanotte"): the user\'s choice wins, never refuse it because the rule picked another hour. It must be an hour of that fountain\'s period (A: mao..xu, B: hai, zi, chou, yin, mao). It applies to ONE period only: the first one of the plan (today / tonight), or the one of hour_date; every other day keeps the rule. The row comes back with forced_hour:true and positive:true/false (say plainly when the chosen hour is not a positive one). OFF stays at the end of the period.' },
+          hour_date: { type: 'string', description: 'With hour: the date YYYY-MM-DD of the period to change (for Fountain B the date on which the night BEGINS). Omit it for today / tonight.' },
           commit: { type: 'boolean', description: 'false (default) = PREVIEW: compute and return the plan WITHOUT depositing anything. true = deposit the plan into the Worker. Only set true AFTER the user has seen the preview and said OK.' },
           purpose: { type: 'string', enum: ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'], description: 'Optional. Plan ONLY on hours that also serve this purpose \u2014 use it for "program only Wealth activations for next week". Water is not a purpose: it is the MEANS by which a purpose is activated. Omit it and every scheduled day is annotated with the purposes it serves (also_good_for).' }
         },
@@ -7721,6 +7724,17 @@
                score: wh.length * 4 + wd.length * 4 + hd.length * 2 + (sk ? 1 : 0), via: parts.join(' · ') };
     };
     var nowT = Math.ceil((Date.now() + 60000) / 60000) * 60000;
+    // Session 59 (Edu 22/11/2026): the user may CHOOSE the hour of one switch-on ("accendi all'ora Zi").
+    // It replaces the hour of the rule for ONE period (the first of the plan, or hour_date); OFF unchanged.
+    var _FT_PY = ['zi', 'chou', 'yin', 'mao', 'chen', 'si', 'wu', 'wei', 'shen', 'you', 'xu', 'hai'];
+    var fk = -1, fDate = /^\d{4}-\d{2}-\d{2}$/.test(String(input.hour_date || '')) ? String(input.hour_date) : '', fUsed = false;
+    if (input.hour != null && String(input.hour).trim()) {
+      var hs = String(input.hour).trim().toLowerCase();
+      for (var q = 0; q < 12; q++) if (hs.indexOf(_FT_BR.charAt(q)) >= 0 || hs.split(/[^a-z]+/).indexOf(_FT_PY[q]) >= 0) { fk = q; break; }
+      var okK = F.period === 'day' ? [3, 4, 5, 6, 7, 8, 9, 10] : [11, 0, 1, 2, 3];
+      if (fk < 0) return { error: 'Unknown hour "' + input.hour + '": use zi, chou, yin, mao, chen, si, wu, wei, shen, you, xu or hai.' };
+      if (okK.indexOf(fk) < 0) return { error: F.label + ' runs only ' + (F.period === 'day' ? 'by DAY (Mao..Xu)' : 'by NIGHT (Hai, Zi, Chou, Yin, Mao)') + ': the ' + _FT_PY[fk] + ' hour is outside its period. Tell the user and ask which hour of the period they want.' };
+    }
     for (var i = 0; i < days; i++) {
       var D = _isoPlus(start, i), N = _isoPlus(D, 1), cands = [], off;
       if (F.period === 'day') {
@@ -7744,13 +7758,19 @@
         if (!r) return; c.r = r;
         if (r.positive && (!pick || r.score > pick.r.score)) pick = c;
       });
+      var forced = false;
+      if (fk >= 0 && (fDate ? fDate === D : !fUsed)) {
+        var fc = cands.filter(function (c) { return c.k === fk && c.on < endMs && c.on + 7200000 > nowT; })[0];   // an hour already over waits for the next period
+        if (fc) { if (!fc.r) { try { fc.r = _ftRank(fc.iso, fc.k); } catch (e) {} } pick = fc; forced = true; fUsed = true; }
+      }
       var def = !pick; if (def) { pick = cands[0]; missing.push(D); }
       var onTs = pick.on, passed = false;
       if (onTs < nowT) { onTs = nowT; passed = true; }          // its hour has already begun: ON from now
       if (!(onTs < offTs)) { skipped.push(D); continue; }
       var pr = pick.r || {};
-      scheduled.push({ date: D, branch: pr.branch || (F.period === 'day' ? '卯' : '亥'), day: pr.day, positive: !def, score: def ? undefined : pr.score,
-                       via: def ? ('No positive hour this ' + (F.period === 'day' ? 'day: switched ON at the Mao hour' : 'night: switched ON at the Hai hour') + ' all the same.' + (pr.via ? ' (' + pr.via + ')' : '')) : pr.via,
+      scheduled.push({ date: D, branch: pr.branch || (F.period === 'day' ? '卯' : '亥'), day: pr.day, positive: forced ? !!pr.positive : !def, score: def ? undefined : pr.score,
+                       forced_hour: forced || undefined,
+                       via: forced ? ('Hour CHOSEN by the user (' + _FT_PY[fk] + '), not the hour of the rule. ' + (pr.positive ? 'It is a positive hour: ' : 'It is NOT a positive hour for this fountain. ') + (pr.via || '')) : def ? ('No positive hour this ' + (F.period === 'day' ? 'day: switched ON at the Mao hour' : 'night: switched ON at the Hai hour') + ' all the same.' + (pr.via ? ' (' + pr.via + ')' : '')) : pr.via,
                        default_hour: def || undefined, on_from_now: passed || undefined, onTs: onTs, offTs: offTs,
                        on_local: new Date(onTs).toString(), off_local: new Date(offTs).toString() });
     }
@@ -7773,6 +7793,7 @@
         : 'the opposite of Fountain A - every night ONE switch-on at the best positive hour from Hai to Mao, at the start of Hai when the night has no positive hour; OFF always at the start of Chen (solar 07:00). ')
         + 'Positive hour = water hex ' + W.hex + ' communicates with the date (hour pillar and/or day pillar: Hetu, Adding 5/10/15, Pure Qi, shared family); hour↔day (or Sheng In / Ke In) only makes it better.',
       periods_without_positive_hour: missing.length ? missing : undefined,
+      chosen_hour: fk >= 0 ? { hour: _FT_PY[fk], applied: fUsed, note: fUsed ? 'Applied to ONE period (the row with forced_hour:true); the other days follow the rule.' : 'No period of this plan has that hour still to come: nothing was changed.' } : undefined,
       mode: noShelly ? 'by_hand' : (commit ? 'committed' : 'preview'), has_shelly: !noShelly,
       plan_ends: jie ? { at_local: new Date(jie.ms).toString(), solar_term: jie.name } : undefined,
       scheduled_count: scheduled.length, scheduled: scheduled,
