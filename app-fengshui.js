@@ -4313,6 +4313,8 @@ function xkdgChartsToggle(){
         + '<button onclick="xkdgChartsPick(\'qmdjday\')" style="' + BTN + 'background:#283593;">📆 QMDJ Day chart</button>'
         + '<button onclick="xkdgChartsPick(\'qmdjmonth\')" style="' + BTN + 'background:#1a237e;">🗓 QMDJ Month chart</button>'
         + '<button onclick="xkdgChartsPick(\'qmdjmulti\')" style="' + BTN + 'background:#311b92;">🧩 QMDJ Multiple charts</button>'
+        // Session 58 (Edu): the charts of a person's birth have their own section.
+        + ((window.openQmdjLifeChart || window.openHeluoLishu) ? sect('Birth charts') : '')
         + (window.openQmdjLifeChart ? '<button onclick="xkdgChartsPick(\'qmdjlife\')" style="' + BTN + 'background:#4527a0;">👤 QMDJ Life chart</button>' : '')   // session 58
         + (window.openHeluoLishu ? '<button onclick="xkdgChartsPick(\'heluo\')" style="' + BTN + 'background:#00695c;">☯ He Luo Li Shu 河洛理數</button>' : '')   // session 53: Edu only for now
         + sect('On the luopan · current house')
