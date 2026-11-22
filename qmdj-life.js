@@ -14,6 +14,9 @@
  * Checked against the course examples: Marilyn Monroe (癸巳 辛酉 癸巳 丙寅, Life Palace
  * Kan), Bill Gates (辛亥 壬戌 丙戌 乙未), J. D. Rockefeller (壬子 壬戌 辛未 己亥, Kan).
  *
+ * Session 59: under the chart, the written reading of qmdj-life-reading.js (the chart, areas
+ * of life, timing), composed from the chart data with no AI call.
+ *
  * Charts -> "QMDJ Life chart".  window.openQmdjLifeChart()
  */
 (function () {
@@ -80,7 +83,60 @@
       + '<div style="text-align:center;font-size:12px;color:#555;margin-bottom:6px;">Voids: <b>' + voids(P.day) + '</b>'
       + ' · <span style="color:#b71c1c;">Life Palace: <b>' + (TRI[L.palace] || L.palace) + '</b></span>'
       + ' · Day Stem <b>' + ds + '</b>' + (ds !== st ? ' (hidden under <b>' + st + '</b>)' : '') + '</div>';
-    return { ok: true, html: html, info: info, life: L };
+    return { ok: true, html: html, info: info, life: L, reading: reading(p, L) };
+  }
+
+  // ---- written reading (session 59): qmdj-life-reading.js, no AI call ----------------
+  var _read = null;
+  function gender(name) { try { return window.xkdgGenderGet(name) || ''; } catch (e) { return ''; } }
+  function reading(p, L) {
+    var E = window.XKDGLifeReading, P = L.pillars, t = P.meta.tst; _read = null;
+    if (!E) return '';
+    var g = gender(p.name);
+    var sel = '<select onchange="qmdjLifeGender(this.value)" style="font-size:12px;margin-left:6px;">'
+      + '<option value=""' + (!g ? ' selected' : '') + '>gender?</option><option value="M"' + (g === 'M' ? ' selected' : '') + '>male</option>'
+      + '<option value="F"' + (g === 'F' ? ' selected' : '') + '>female</option></select>';
+    var head = '<div style="margin-top:12px;font-size:14px;font-weight:bold;color:#4527a0;">📖 Life reading' + sel + '</div>';
+    if (!g) return head + '<div style="color:#888;font-size:12px;margin-top:4px;">Choose the gender: the spouse element and the periods of life depend on it.</div>';
+    var c = window.QMDJWaterScanner.getRotatingHourChart(t.y, t.mo, t.d, P.hour.charAt(0), P.hour.charAt(1), P.meta.beijing);
+    if (!c) return '';
+    var gzOf = function (y) { var i = ((y - 4) % 60 + 60) % 60; return STEMS.charAt(i % 10) + BR.charAt(i % 12); };
+    var by = gzOf(t.y) === P.year ? t.y : t.y - 1;
+    var r; try { r = E.build({ chart: c, pillars: { hour: P.hour, day: P.day, month: P.month, year: P.year }, palace: L.palace, male: g === 'M', birthYear: by }); } catch (e) { return ''; }
+    _read = r;
+    var sec = function (a, num) {
+      return a.map(function (x, i) { return '<div style="margin:5px 0;font-size:13px;line-height:1.45;"><b style="color:#4527a0;">' + (num ? (i + 1) + '. ' : '') + esc(x.t) + '.</b> ' + esc(x.x) + '</div>'; }).join('');
+    };
+    var box = function (title, body, open) {
+      return '<details' + (open ? ' open' : '') + ' style="margin-top:6px;border:1px solid #d1c4e9;border-radius:8px;padding:6px 10px;background:#faf8ff;">'
+        + '<summary style="cursor:pointer;font-weight:bold;color:#4527a0;font-size:13px;">' + title + '</summary>' + body + '</details>';
+    };
+    var now = new Date().getFullYear();
+    var cyc = r.cycles.map(function (k) {
+      var cur = now >= k.y0 && now <= k.y1;
+      return '<div style="margin:4px 0;font-size:12.5px;line-height:1.4;' + (cur ? 'background:#fff3b0;border-radius:4px;padding:2px 4px;' : '') + '"><b>' + k.from + '–' + k.to + '</b> · ' + k.y0 + '–' + k.y1 + ' · <b>' + k.lead + '</b>: ' + esc(k.x) + '</div>';
+    }).join('');
+    var sub = function (t) { return '<div style="margin-top:8px;font-size:12px;font-weight:bold;color:#6a1b9a;">' + t + '</div>'; };
+    var btn = 'style="border:1px solid #b39ddb;background:#fff;border-radius:5px;font-size:14px;padding:2px 9px;cursor:pointer;"';
+    var timing = sub('One year') + '<div style="margin:4px 0;"><button ' + btn + ' onclick="qmdjLifeYear(-1)">◀</button> '
+      + '<input id="qlife-year" type="number" value="' + now + '" onchange="qmdjLifeYear(0)" style="width:78px;padding:3px;border:1px solid #b39ddb;border-radius:5px;font-size:14px;text-align:center;"> '
+      + '<button ' + btn + ' onclick="qmdjLifeYear(1)">▶</button></div><div id="qlife-yearout"></div>'
+      + sub('Periods of life') + sec(r.phases)
+      + sub('Zhi Fu cycles (age · years)') + cyc
+      + ((r.trigger || r.geng) ? sub('Years to watch') + '<div style="font-size:12.5px;line-height:1.4;">' + esc([r.trigger, r.geng].filter(Boolean).join(' ')) + '</div>' : '');
+    return head + box('The chart', sec(r.natal, true), true) + box('Areas of life', sec(r.areas)) + box('Timing', timing);
+  }
+  function yearOut(d) {
+    var inp = $('qlife-year'), out = $('qlife-yearout'); if (!inp || !out || !_read) return;
+    var y = (parseInt(inp.value, 10) || new Date().getFullYear()) + (d || 0); inp.value = y;
+    var r = _read.year(y);
+    out.innerHTML = '<div style="font-size:13px;margin:3px 0;"><b>' + y + ' ' + r.gz + '</b> · age ' + r.age + '</div>'
+      + r.lines.map(function (l) { return '<div style="font-size:12.5px;line-height:1.4;margin:3px 0;">' + esc(l) + '</div>'; }).join('');
+  }
+  function setGender(v) {
+    var sel = $('qlife-who'); if (!sel || !sel.value) return;
+    try { window.xkdgGenderSet(sel.value, v); } catch (e) {}
+    show();
   }
 
   function show() {
@@ -88,7 +144,8 @@
     var list = people(), p = list.filter(function (x) { return x.name === sel.value; })[0];
     if (!p) { out.innerHTML = '<div style="color:#888;font-size:12px;">Choose a person with a full birth date and hour.</div>'; return; }
     var r = build(p);
-    out.innerHTML = r.ok ? (r.info + r.html) : '<div style="color:#c0392b;font-size:12px;">' + esc(r.error) + '</div>';
+    out.innerHTML = r.ok ? (r.info + r.html + (r.reading || '')) : '<div style="color:#c0392b;font-size:12px;">' + esc(r.error) + '</div>';
+    yearOut(0);
   }
 
   function open() {
@@ -120,5 +177,7 @@
 
   window.openQmdjLifeChart = open;
   window.qmdjLifeShow = show;
+  window.qmdjLifeYear = yearOut;
+  window.qmdjLifeGender = setGender;
   window.XKDGLifeChart = { people: people, build: build };
 })();
