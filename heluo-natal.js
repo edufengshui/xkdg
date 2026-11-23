@@ -141,7 +141,12 @@
       });
       // Edu 18/11/2026: the lines next to the line of the cycle count (a Parent next to a Ghost drains it), and so does the
       // line the person comes from, above all if adjacent; the real jump is the passage XT → HT, more so into a different trigram
-      var adj = [], prev = null, soft = '', triJump = '', infl = [];
+      var adj = [], prev = null, soft = '', triJump = '', infl = [], corr = null;
+      // Edu 23/11/2026: the corresponding line (1–4, 2–5, 3–6) of the same hexagram, lived or not. Yin with yang = it answers
+      // and supports; the KIND of support is the relation that line has for the person of this period (texts in corrText).
+      try { var cn = line <= 3 ? line + 3 : line - 3, Lc = NJ()[hx.n].lines[cn - 1], ccy = N.cycles.filter(function (q) { return q.line === cn; })[0];
+        corr = { line: cn, branch: Lc.branch, el: Lc.el, r: rel(me, Lc.el), yy: !!hx.lines[cn - 1] !== !!hx.lines[line - 1], flow: rel(L.el, Lc.el),
+          from: ccy && ccy.from, to: ccy && ccy.to, isVoid: (natVoids || []).indexOf(Lc.branch) >= 0 }; } catch (e) {}
       try {
         [line - 1, line + 1].forEach(function (n) { if (n < 1 || n > 6) return;
           var La = NJ()[hx.n].lines[n - 1], cc = N.cycles.filter(function (q) { return q.line === n; })[0];
@@ -170,7 +175,7 @@
         : 'line void at birth and out of season: hard to leave — it needs a year and a month that put ' + L.el + ' in season, then the same branch, a clash or a moving line');
       var rs = { W: has.W, C: has.C, P: has.P, G: has.G, B: has.B }; rs[x.r] += tv;
       A.cycles.push({ phase: x.phase, N: N, hx: hx, c: x.c, line: line, L: L, me: me, r: x.r, src: x.src, luck: x.luck, y1: x.y1, y2: x.y2,
-        tm: tm, isVoid: isVoid, voidEasy: voidEasy, s: s, V: V, txt: txt, lkT: lkT, huF: huF, act: act, com: com, hit: hit, has: has, score: Math.round(w * 100) / 100, rs: rs, why: why, flags: flags, adj: adj, prev: prev, soft: soft, triJump: triJump, infl: infl,
+        tm: tm, isVoid: isVoid, voidEasy: voidEasy, s: s, V: V, txt: txt, lkT: lkT, huF: huF, act: act, com: com, hit: hit, has: has, score: Math.round(w * 100) / 100, rs: rs, why: why, flags: flags, adj: adj, prev: prev, soft: soft, triJump: triJump, infl: infl, corr: corr,
         crossTri: !N.one && (line === 3 || line === 4), isStart: line === N.movingLine && x.c.from === N.from });
     });
 
@@ -395,6 +400,27 @@
     (c.infl || []).forEach(function (q) { out += p('<span style="color:#777;">↩ ' + esc('Also from line ' + q.line + ' ' + q.branch + ' ' + REL[q.r] + ' (age ' + q.from + '–' + q.to + '), ' + KIND[q.kind] + '. ' + flowText(A, q.flow, REL[q.r]) + '.') + '</span>'); });
     return out;
   }
+  // The corresponding line (Edu 23/11/2026: «riceve supporto. Ma che tipo di supporto? Bisogna scriverlo»). The kind of support =
+  // the relation of the corresponding line for the person of this period; where it comes from = the place of that line; how it
+  // arrives = the flow between the two lines. Wording by Claude, to be reviewed by Edu.
+  function corrText(A, c) {
+    var q = c.corr; if (!q) return '';
+    var he = A.male ? 'he' : 'she', him = A.male ? 'him' : 'her', his = A.male ? 'his' : 'her';
+    var head = 'Corresponding line ' + q.line + ' ' + q.branch + ' ' + REL[q.r] + (q.from ? ' (age ' + q.from + '–' + q.to + ')' : '') + ': ';
+    if (!q.yy) return p('<span style="color:#777;">⇄ ' + esc(head + 'both lines are ' + (c.hx.lines[c.line - 1] ? 'yang' : 'yin') + ', they do not answer each other — little support from there. What that line stands for (' + REL[q.r] + ') stays in the background.') + '</span>');
+    var KINDS = { B: 'the support of peers — friends, colleagues, partners, people of ' + his + ' own standing who side with ' + him,
+      P: 'protection and backing — an elder, a teacher, an institution; documents and agreements that cover ' + him,
+      W: 'material support — money, means, resources' + (A.male ? '; also the wife or partner' : ''),
+      G: 'the support of authority — a superior, a mandate, a position' + (A.male ? '' : '; also the husband or partner') + '. It comes with duties',
+      C: 'the support of what ' + he + ' creates — ' + his + ' projects, ideas, students, children; it lightens the pressure' };
+    var POS = { 1: 'from the base: the people and the ground ' + he + ' started from', 2: 'from inside: the home, the close circle, a loyal collaborator',
+      3: 'from someone on the threshold, between inside and outside', 4: 'from someone close to the top: an adviser, a go-between',
+      5: 'from above: the one who leads or decides', 6: 'from outside: an elder, someone no longer in the game' };
+    var FL = { P: 'That line generates this one: the help reaches ' + him + ' by itself', C: 'This line generates that one: ' + he + ' has to give first, the support answers what ' + he + ' puts in',
+      B: 'Same element: they understand each other at once', W: 'This line controls that one: ' + he + ' leads and the support follows', G: 'That line controls this one: the support comes with conditions' };
+    return p('<span style="color:#2e7d32;">⇄ ' + esc(head + (c.hx.lines[c.line - 1] ? 'yang' : 'yin') + ' answered by ' + (c.hx.lines[q.line - 1] ? 'yang' : 'yin') + ' — this line is supported. What kind: ' + KINDS[q.r] + '; '
+      + POS[q.line] + '. ' + FL[q.flow] + '.' + (q.isVoid ? ' That line is void at birth: the support is promised but empty until the line leaves the void.' : '')) + '</span>');
+  }
   function period(A, c) {
     var N = c.N, sub = pron(SUBJ[c.r], A.male);
     var tech = 'Line ' + c.L.branch + ' ' + c.L.el + ', person ' + c.me + '. At birth: ' + (plain(c.tm.note, 'birth', A.T) || 'no link with the birth branches') + '.'
@@ -405,12 +431,14 @@
     return '<div style="border-left:4px solid ' + RC[c.r] + ';padding:4px 8px;background:#fcfbff;border-radius:4px;">'
       + '<div style="font-size:13px;font-weight:600;">Age ' + c.c.from + '–' + c.c.to + ' <span style="color:#888;font-weight:400;">(' + c.y1 + '–' + c.y2 + ', ' + (c.c.to - c.c.from + 1) + ' years)</span> · line ' + c.line + ' ' + c.L.branch + ' ' + relFull(c.r) + '</div>'
       + draw(c.hx, c.line, N.cycles, c.me)
+      + (N.one ? '' : '<div style="font-size:10px;color:#999;text-align:center;margin-top:-2px;">Relations as seen from this period (person ' + esc(c.me) + '). On the lines of the other trigram the person changes element, so the same line can show another relation there.</div>')
       + (c.isStart ? p('<span style="color:#e65100;">★</span> This line colors the whole chart (age ' + N.from + '–' + N.to + '), and these first years shape ' + (A.male ? 'him' : 'her') + ' deeply.') : '')
       + p('<b>' + esc(headline(A, c, sub)) + '</b>')
       + lineTxt(c.hx.n, c.line, false)
       + meaning(A, c)
       + years(c)
       + fromLine(A, c)
+      + corrText(A, c)
       + (c.soft ? p('<span style="color:#2e7d32;">' + esc(c.soft.charAt(0).toUpperCase() + c.soft.slice(1)) + '.</span>') : '')
       + (c.flags.length ? p('<span style="color:#c62828;">⚠ ' + esc(c.flags.map(flagPlain).join('; ')) + '</span>') : '')
       + '<details style="margin-top:3px;"><summary style="font-size:11px;color:#999;cursor:pointer;">details</summary><div style="font-size:11px;color:#777;line-height:1.5;">' + esc(tech) + '</div></details>'
