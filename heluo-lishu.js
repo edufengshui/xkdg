@@ -1063,6 +1063,13 @@
     };
     // Edu 13/11: advance notice of severe and critical days (next 30 days) at the opening of the chart
     var alarmTop = ''; try { alarmTop = root.XKDGHeluoDS && root.XKDGHeluoDS.alarmAheadHtml ? root.XKDGHeluoDS.alarmAheadHtml(_chart) : ''; } catch (e) { alarmTop = ''; }
+    // Edu 23/11/2026: the three Luck and their opposites right at the start of the chart (they were at the bottom)
+    var luckTop = '<div style="margin-bottom:8px;">' + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:2px 0 3px;">The three Luck and their opposites</div>'
+      + '<table style="border-collapse:collapse;font-size:12px;"><tr style="color:#777;text-align:left;"><th style="padding:2px 8px;"></th><th style="padding:2px 8px;">Trigram</th><th style="padding:2px 8px;">Opposite (counter-Luck)</th></tr>'
+      + [['Heaven (year stem)', 'heaven', 'luck'], ['Earth (year branch)', 'earth', 'luck'], ['Fame (season)', 'fame', 'luck'], ['Heaven (day stem)', 'heaven', 'luckDay'], ['Earth (day branch)', 'earth', 'luckDay']].map(function (r) {
+          var S = R[r[2]]; if (!S) return '';
+          return '<tr style="border-top:1px solid #eee;"><td style="padding:2px 8px;">' + r[0] + '</td><td style="padding:2px 8px;">' + triLbl(S[r[1]]) + ' · ' + TRI_EL[S[r[1]]] + '</td><td style="padding:2px 8px;">' + triLbl(S.opposite[r[1]]) + '</td></tr>';
+        }).join('') + '</table><div style="font-size:10px;color:#999;margin-top:3px;">Year Luck: what you obtain (money, clients), used for every purpose. Day Luck: what you are (study, writing, teaching), used for Speak and Support (Edu, 12/11/2026).</div>' + '</div>';
     var h = alarmTop + '<div style="font-size:12px;color:#555;margin-bottom:6px;"><b>' + esc(c.name) + '</b> · ' + esc(c.date) + ' ' + esc(c.time)
       + ' · TST ' + String(I.tst.h).padStart(2, '0') + ':' + String(I.tst.mi).padStart(2, '0') + ' · ' + (g === 'M' ? 'man' : 'woman')
       + (c.noGeo ? ' · <span style="color:#b26a00;">birth place not saved: current GPS used</span>' : '') + '</div>'
@@ -1072,6 +1079,7 @@
       + 'Heaven number <b>' + N.heaven + '</b> (' + N.odd.join('+') + ') → <b>' + triLbl(R.heavenTrigram) + '</b>' + (R.five ? ' (5 · ' + R.fiveCycle + ' cycle)' : '') + '<br>'
       + 'Earth number <b>' + N.earth + '</b> (' + N.even.join('+') + ') → <b>' + triLbl(R.earthTrigram) + '</b><br>'
       + 'Heaven trigram ' + (R.heavenUp ? 'on top' : 'below') + ' · ' + (I.o.yangDun ? 'Yang Dun' : 'Yin Dun') + ' · ' + SEASON[I.o.season] + '</div>'
+      + luckTop
       + yyBalance(N)
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
       + fmtCard('Xian Tian ' + R.xianTian.n + ' ' + esc(hexName(R.xianTian.n)) + ' · moving line ' + R.moving.line, R.xianTian, lineNow(R.cyclesXT, R.moving.line), R.cyclesXT, null,
@@ -1088,13 +1096,8 @@
         + small('Hou Tian', R.houTian.hex, 'HT', 'mother') + (R.huHT ? small('Hu Gua', R.huHT, 'HT', 'hu') : '') + (R.oppositeHT ? small('Opposite', R.oppositeHT, 'HT', 'opp') + small('Inverse', R.inverseHT, 'HT', 'inv') : '') + '</div>' : '')
       + newNatalReading(R, g === 'M', c.lon)
       + (root.XKDGHeluoDS && root.XKDGHeluoDS.plannerHtml ? root.XKDGHeluoDS.plannerHtml(_chart) : '')
-      + (R.cyclesXT.length ? cycleTable('Xian Tian cycles · age ' + nowAge + ' now · tap a line', R.cyclesXT, y0, nowAge, R.xianTian) + cycleTable('Hou Tian cycles', R.cyclesHT, y0, nowAge, R.houTian.hex) + annualSection(R) : '<div style="color:#c0392b;font-size:12px;">No moving line found.</div>')
-      + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:10px 0 3px;">Luck trigrams</div>'
-      + '<table style="border-collapse:collapse;font-size:12px;"><tr style="color:#777;text-align:left;"><th style="padding:2px 8px;"></th><th style="padding:2px 8px;">Trigram</th><th style="padding:2px 8px;">Opposite</th></tr>'
-      + [['Heaven (year stem)', 'heaven', 'luck'], ['Earth (year branch)', 'earth', 'luck'], ['Fame (season)', 'fame', 'luck'], ['Heaven (day stem)', 'heaven', 'luckDay'], ['Earth (day branch)', 'earth', 'luckDay']].map(function (r) {
-          var S = R[r[2]]; if (!S) return '';
-          return '<tr style="border-top:1px solid #eee;"><td style="padding:2px 8px;">' + r[0] + '</td><td style="padding:2px 8px;">' + triLbl(S[r[1]]) + ' · ' + TRI_EL[S[r[1]]] + '</td><td style="padding:2px 8px;">' + triLbl(S.opposite[r[1]]) + '</td></tr>';
-        }).join('') + '</table><div style="font-size:10px;color:#999;margin-top:3px;">Year Luck: what you obtain (money, clients), used for every purpose. Day Luck: what you are (study, writing, teaching), used for Speak and Support (Edu, 12/11/2026).</div>';
+      + (R.cyclesXT.length ? cycleTable('Xian Tian cycles · age ' + nowAge + ' now · tap a line', R.cyclesXT, y0, nowAge, R.xianTian) + cycleTable('Hou Tian cycles', R.cyclesHT, y0, nowAge, R.houTian.hex) + annualSection(R) : '<div style="color:#c0392b;font-size:12px;">No moving line found.</div>');
+
     out.innerHTML = h;
   }
 
