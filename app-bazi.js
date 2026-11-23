@@ -4920,10 +4920,8 @@ function _hlApply(results, rerender) {
         // Edu 13/11/2026: the Favour level of the purpose adds to the ☯ (strong +5%, ★ +10%, ★★ +15%; total He Luo ±20%)
         results.forEach(function (r) { var th = sc.by[r.isoDate]; if (th) { var pts = XKDGHeluoDS.xkPts ? XKDGHeluoDS.xkPts(th) : th.adj; r._hl = th; r._hlPts = pts; r._hlAdj = Math.round(r.score * 0.05 * pts * 10) / 10; } });
         // Luck · $ Windfall (Edu 23/11/2026: «devono apparire solo quelle»): only the XKDG dates whose He Luo day is at least
-        // "good" for the windfall (heluo-ds.js moneyMeter); the state of the period on top. The three Luck: as before.
+        // "good" for the windfall (heluo-ds.js moneyMeter). No note on top (Edu 23/11: the score says it). The three Luck: as before.
         if (key === 'luck' && XKDGHeluoDS.xkVar && XKDGHeluoDS.xkVar('luck') === 'money') {
-            var m0 = null; iso.some(function (d) { var t = sc.by[d]; if (t && t.money) { m0 = t.money; return true; } return false; });
-            if (m0) _hlScanNote = '$ Windfall — period ' + m0.perTxt + '. Only the dates with a $ window are listed (good, strong, best).';
             results = results.filter(function (r) { return r._hl && r._hl.money && r._hl.money.lv >= 1; });
         }
         else if (key === 'luck') results = results.filter(function (r) { return r._hl && r._hl.luck.length; });

@@ -1298,7 +1298,7 @@
       if (c.ok) { a.push('✚ day to correct ' + REL[c.problem] + ' (' + c.how + ')'); a.push('Do: ' + c.todo); a.push(c.hours && c.hours.length ? 'hour ' + c.hours.slice(0, 2).map(function (x) { return x.pillar + ' ' + x.tst; }).join(', ') : 'no particular hour'); }
       return a.join(' · '); }
     if (th.fav && th.fav.ok) a.push((th.fav.stars ? (th.fav.stars === 2 ? '★★ ' : '★ ') : '') + th.fav.level + ' for ' + REL[th.fav.X]);
-    if (th.key === 'luck' && th.money) { var M$ = th.money; a.push('$ ' + (M$.lv ? M$.level : 'no window') + ' (window ' + M$.win + '/3, day ' + M$.day + '/2)'); a.push('period ' + (M$.per > 0 ? 'on' : M$.per < 0 ? 'against' : 'off')); }
+    if (th.key === 'luck' && th.money) { var M$ = th.money; a.push('$ ' + (M$.lv ? M$.level : 'no window')); } // Edu 23/11/2026: no period or counts in the row, the score shows it
     else if (th.key === 'luck') { if (th.luck.length) a.push(th.luck.length + ' Luck'); if (th.opp.length) a.push(th.opp.length + ' opposite');
       if (th.luckD) a.push('day Luck ' + (th.luckD.s > 0 ? '+' : th.luckD.s < 0 ? '−' : '±') + Math.abs(th.luckD.s)); }
     else if (th.key === 'cure') { if (th.adj) a.push(th.adj > 0 ? 'brings the ' + th.need + ' the chart needs' : 'against the balance (chart needs ' + th.need + ')'); }
