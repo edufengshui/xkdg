@@ -392,7 +392,7 @@
             <span class="filter-chip gold"  data-filter="family"       onclick="toggleChip(this)">Family Blood Link</span>
             <span class="filter-chip green" data-filter="inverse-hex"  onclick="toggleChip(this)">Inverse Hex</span>
             <span class="filter-chip nayin-chip" data-filter="nayin" onclick="toggleChip(this)">NaYin</span>
-            <span class="filter-chip ke-chip" data-filter="ke-wealth" onclick="toggleChip(this)">Ke</span>
+            <!-- Ke chip removed (Edu 23/11/2026): the Ke count stays as a tag on the rows and enters Luck · $ / $$ -->
             <span class="filter-chip cure-chip" data-filter="cure" onclick="toggleChip(this)" title="Only favourable dates that carry a cure (remedy) for the loaded person">🌿 Cure</span>
             <span class="filter-chip cure-chip" data-filter="hlls-mother" onclick="toggleChip(this)" title="Only hours whose four pillars close into an XKDG bond that also includes the He Luo mother hexagram of Person A (Xian Tian before the change, Hou Tian after, as Qi and Yun)">◎ HLLS Mother</span>
             <select id="hlls-line" onchange="var c=document.querySelector('[data-filter=&quot;hlls-mother&quot;]');if(this.value&&c&&!c.classList.contains('active'))toggleChip(c);" title="Line of the mother hexagram to activate: only dates that activate it — wood/water Hetu on the four Qi or Yun (3-8 twice, or 3-8 with 1-6 and the day on wood) · a 3-8 hexagram · three or more Zhen trigrams; wood branches only add a point (wood lines only, for now)" style="font-size:12px;padding:4px 6px;border-radius:14px;border:1px solid #2e7d32;color:#2e7d32;background:#fff;">
