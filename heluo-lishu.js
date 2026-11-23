@@ -1064,12 +1064,18 @@
     // Edu 13/11: advance notice of severe and critical days (next 30 days) at the opening of the chart
     var alarmTop = ''; try { alarmTop = root.XKDGHeluoDS && root.XKDGHeluoDS.alarmAheadHtml ? root.XKDGHeluoDS.alarmAheadHtml(_chart) : ''; } catch (e) { alarmTop = ''; }
     // Edu 23/11/2026: the three Luck and their opposites right at the start of the chart (they were at the bottom)
-    var luckTop = '<div style="margin-bottom:8px;">' + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:2px 0 3px;">The three Luck and their opposites</div>'
+    // Year Luck in bold; the Luck from the day smaller and only on request (Edu 23/11/2026, 14:18)
+    var luckRow = function (r, small) { var S = R[r[2]]; if (!S) return '';
+      var td = 'padding:2px 8px;' + (small ? '' : 'font-weight:700;');
+      return '<tr style="border-top:1px solid #eee;"><td style="' + td + '">' + r[0] + '</td><td style="' + td + '">' + triLbl(S[r[1]]) + ' · ' + TRI_EL[S[r[1]]] + '</td><td style="' + td + '">' + triLbl(S.opposite[r[1]]) + '</td></tr>'; };
+    var luckDayRows = [['Heaven (day stem)', 'heaven', 'luckDay'], ['Earth (day branch)', 'earth', 'luckDay']].map(function (r) { return luckRow(r, true); }).join('');
+    var luckTop = '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#4527a0;margin:2px 0 3px;">The three Luck and their opposites</div>'
       + '<table style="border-collapse:collapse;font-size:12px;"><tr style="color:#777;text-align:left;"><th style="padding:2px 8px;"></th><th style="padding:2px 8px;">Trigram</th><th style="padding:2px 8px;">Opposite (counter-Luck)</th></tr>'
-      + [['Heaven (year stem)', 'heaven', 'luck'], ['Earth (year branch)', 'earth', 'luck'], ['Fame (season)', 'fame', 'luck'], ['Heaven (day stem)', 'heaven', 'luckDay'], ['Earth (day branch)', 'earth', 'luckDay']].map(function (r) {
-          var S = R[r[2]]; if (!S) return '';
-          return '<tr style="border-top:1px solid #eee;"><td style="padding:2px 8px;">' + r[0] + '</td><td style="padding:2px 8px;">' + triLbl(S[r[1]]) + ' · ' + TRI_EL[S[r[1]]] + '</td><td style="padding:2px 8px;">' + triLbl(S.opposite[r[1]]) + '</td></tr>';
-        }).join('') + '</table><div style="font-size:10px;color:#999;margin-top:3px;">Year Luck: what you obtain (money, clients), used for every purpose. Day Luck: what you are (study, writing, teaching), used for Speak and Support (Edu, 12/11/2026).</div>' + '</div>';
+      + [['Heaven (year stem)', 'heaven', 'luck'], ['Earth (year branch)', 'earth', 'luck'], ['Fame (season)', 'fame', 'luck']].map(function (r) { return luckRow(r, false); }).join('') + '</table>'
+      + (luckDayRows ? '<details style="margin-top:3px;"><summary style="font-size:10px;color:#999;cursor:pointer;">Luck from the day</summary>'
+        + '<table style="border-collapse:collapse;font-size:10px;color:#666;">' + luckDayRows + '</table>'
+        + '<div style="font-size:10px;color:#999;margin-top:3px;">Year Luck: what you obtain (money, clients), used for every purpose. Day Luck: what you are (study, writing, teaching), used for Speak and Support (Edu, 12/11/2026).</div></details>' : '')
+      + '</div>';
     var h = alarmTop + '<div style="font-size:12px;color:#555;margin-bottom:6px;"><b>' + esc(c.name) + '</b> · ' + esc(c.date) + ' ' + esc(c.time)
       + ' · TST ' + String(I.tst.h).padStart(2, '0') + ':' + String(I.tst.mi).padStart(2, '0') + ' · ' + (g === 'M' ? 'man' : 'woman')
       + (c.noGeo ? ' · <span style="color:#b26a00;">birth place not saved: current GPS used</span>' : '') + '</div>'
