@@ -4919,7 +4919,14 @@ function _hlApply(results, rerender) {
         // same on weak and strong days and XKDG stays in command.
         // Edu 13/11/2026: the Favour level of the purpose adds to the ☯ (strong +5%, ★ +10%, ★★ +15%; total He Luo ±20%)
         results.forEach(function (r) { var th = sc.by[r.isoDate]; if (th) { var pts = XKDGHeluoDS.xkPts ? XKDGHeluoDS.xkPts(th) : th.adj; r._hl = th; r._hlPts = pts; r._hlAdj = Math.round(r.score * 0.05 * pts * 10) / 10; } });
-        if (key === 'luck') results = results.filter(function (r) { return r._hl && r._hl.luck.length; });
+        // Luck · $ Windfall (Edu 23/11/2026: «devono apparire solo quelle»): only the XKDG dates whose He Luo day is at least
+        // "good" for the windfall (heluo-ds.js moneyMeter); the state of the period on top. The three Luck: as before.
+        if (key === 'luck' && XKDGHeluoDS.xkVar && XKDGHeluoDS.xkVar('luck') === 'money') {
+            var m0 = null; iso.some(function (d) { var t = sc.by[d]; if (t && t.money) { m0 = t.money; return true; } return false; });
+            if (m0) _hlScanNote = '$ Windfall — period ' + m0.perTxt + '. Only the dates with a $ window are listed (good, strong, best).';
+            results = results.filter(function (r) { return r._hl && r._hl.money && r._hl.money.lv >= 1; });
+        }
+        else if (key === 'luck') results = results.filter(function (r) { return r._hl && r._hl.luck.length; });
         // Correct (Edu 13/11/2026): the problem of the period on top, then only the XKDG days that are also days to correct it
         if (key === 'correct') { _hlScanNote = '✚ ' + XKDGHeluoDS.xkCorrectHead(sc.by, iso); results = results.filter(function (r) { return r._hl && r._hl.cf && r._hl.cf.ok; }); }
         if (byScore) results = results.map(function (r, i) { return [r, i]; }).sort(function (a, b) { return (b[0].score + b[0]._hlAdj) - (a[0].score + a[0]._hlAdj) || a[1] - b[1]; }).map(function (x) { return x[0]; });
@@ -5006,7 +5013,7 @@ function renderScanResults(results, mode) {
     // He Luo (Edu, 11/11/2026): only on the favourable dates, after the XKDG filter — it never adds or removes a date by score
     if (!hasNegSort) {
         results = _hlApply(results, function () { try { renderScanResults(_hlAll, _hlMode); } catch (e) {} });
-        if (results.length === 0) { container.innerHTML = purposeHeader + sortToggleHTML + (_hlScanNote ? '<div style="font-size:11px;color:#5e35b1;margin-bottom:6px;">' + _hlScanNote + '</div>' : '') + '<div class="scan-empty">' + (_hlPurposeKey() === 'correct' ? 'No favourable XKDG date is also a He Luo day to correct the problem in this range.' : 'No favourable date with one of the three He Luo Luck in this range.') + '</div>'; return; }
+        if (results.length === 0) { container.innerHTML = purposeHeader + sortToggleHTML + (_hlScanNote ? '<div style="font-size:11px;color:#5e35b1;margin-bottom:6px;">' + _hlScanNote + '</div>' : '') + '<div class="scan-empty">' + (_hlPurposeKey() === 'luck' && window.XKDGHeluoDS && XKDGHeluoDS.xkVar && XKDGHeluoDS.xkVar('luck') === 'money' ? 'No favourable XKDG date has a $ window in this period.' : _hlPurposeKey() === 'correct' ? 'No favourable XKDG date is also a He Luo day to correct the problem in this range.' : 'No favourable date with one of the three He Luo Luck in this range.') + '</div>'; return; }
     } else results.forEach(r => { r._hl = null; r._hlAdj = 0; });
     const _hlNoteHtml = _hlScanNote ? '<div style="font-size:11px;color:#5e35b1;margin-bottom:6px;">' + _hlScanNote + '</div>' : '';
     const maxScore = hasNegSort
