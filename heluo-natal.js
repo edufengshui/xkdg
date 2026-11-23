@@ -146,7 +146,9 @@
       // and supports; the KIND of support is the relation that line has for the person of this period (texts in corrText).
       try { var cn = line <= 3 ? line + 3 : line - 3, Lc = NJ()[hx.n].lines[cn - 1], ccy = N.cycles.filter(function (q) { return q.line === cn; })[0];
         corr = { line: cn, branch: Lc.branch, el: Lc.el, r: rel(me, Lc.el), yy: !!hx.lines[cn - 1] !== !!hx.lines[line - 1], flow: rel(L.el, Lc.el),
-          from: ccy && ccy.from, to: ccy && ccy.to, isVoid: (natVoids || []).indexOf(Lc.branch) >= 0 }; } catch (e) {}
+          from: ccy && ccy.from, to: ccy && ccy.to, isVoid: (natVoids || []).indexOf(Lc.branch) >= 0,
+          txt: SC() && SC()[hx.n] ? SC()[hx.n].l[cn] : 0,   // the text of the corresponding line says how good the support is (Edu 23/11)
+          okHere: (line % 2 === 1) === !!hx.lines[line - 1], okThere: (cn % 2 === 1) === !!hx.lines[cn - 1] }; } catch (e) {}   // proper place: yang on 1, 3, 5, yin on 2, 4, 6
       try {
         [line - 1, line + 1].forEach(function (n) { if (n < 1 || n > 6) return;
           var La = NJ()[hx.n].lines[n - 1], cc = N.cycles.filter(function (q) { return q.line === n; })[0];
@@ -418,8 +420,20 @@
       5: 'from above: the one who leads or decides', 6: 'from outside: an elder, someone no longer in the game' };
     var FL = { P: 'That line generates this one: the help reaches ' + him + ' by itself', C: 'This line generates that one: ' + he + ' has to give first, the support answers what ' + he + ' puts in',
       B: 'Same element: they understand each other at once', W: 'This line controls that one: ' + he + ' leads and the support follows', G: 'That line controls this one: the support comes with conditions' };
-    return p('<span style="color:#2e7d32;">⇄ ' + esc(head + (c.hx.lines[c.line - 1] ? 'yang' : 'yin') + ' answered by ' + (c.hx.lines[q.line - 1] ? 'yang' : 'yin') + ' — this line is supported. What kind: ' + KINDS[q.r] + '; '
-      + POS[q.line] + '. ' + FL[q.flow] + '.' + (q.isVoid ? ' That line is void at birth: the support is promised but empty until the line leaves the void.' : '')) + '</span>');
+    // Edu 23/11/2026 (14:00): opposite polarity = always a special, favourable relation, more so when the lines stand in their
+    // proper place; it is the support of the relation of that line TO the relation of this line (Brothers → her Parent); the
+    // text of the corresponding line says how good it is.
+    var WHAT = { P: his + ' studies, documents, agreements and the people who back ' + him, W: his + ' money and resources', G: his + ' position and duties',
+      C: his + ' projects and what ' + he + ' creates', B: he + ' ' + (A.male ? 'himself' : 'herself') + ' and ' + his + ' own circle' };
+    var place = q.okHere && q.okThere ? ' Both lines stand in their proper place (yin on an even line, yang on an odd one): the bond at its strongest.'
+      : q.okHere || q.okThere ? ' Only ' + (q.okHere ? 'this line' : 'that line') + ' stands in its proper place: a good bond, not the fullest.' : '';
+    var TQ = { '2': 'a very good text: the support is full and reliable', '1': 'a good text: the support is real', '0': 'a text that can go either way: the support depends on how ' + he + ' moves',
+      '-1': 'a difficult text: the support is there, but it costs or comes late', '-2': 'a hard text: the bond exists, but what arrives through it is heavy' };
+    var t = TX() && TX()[c.hx.n], Lt = t && t.lines && t.lines[q.line], tq = TQ[String(Math.max(-2, Math.min(2, Math.round(q.txt || 0))))];
+    return p('<span style="color:#2e7d32;">⇄ ' + esc(head + (c.hx.lines[c.line - 1] ? 'yang' : 'yin') + ' answered by ' + (c.hx.lines[q.line - 1] ? 'yang' : 'yin') + ' — a special, favourable bond.' + place
+      + ' It is the support of the ' + REL[q.r] + ' to ' + his + ' ' + REL[c.r] + ' (this line): ' + KINDS[q.r] + ', for ' + WHAT[c.r] + '; ' + POS[q.line] + '. ' + FL[q.flow] + '.'
+      + (q.isVoid ? ' That line is void at birth: the support is promised but empty until the line leaves the void.' : '')) + '</span>'
+      + (Lt ? '<br><span style="color:#555;">Text of line ' + q.line + ': <i>“' + esc(Lt.statement) + '”</i> — ' + esc(tq) + '.</span>' : ''));
   }
   function period(A, c) {
     var N = c.N, sub = pron(SUBJ[c.r], A.male);
