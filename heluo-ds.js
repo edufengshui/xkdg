@@ -456,11 +456,12 @@
   // 2) WINDOW: month line Wealth, Lord of the Block Wealth, Wealth trigram in the block hexagram (1 each).
   // 3) DAY: Wealth trigram in the day hexagram; day line Wealth, primary or outcome (1 each).
   // Levels: good = day ≥ 1 and window ≥ 1; strong = day ≥ 1 and window ≥ 2; best = day 2 and window ≥ 2.
+  // 4) Wealth day for the person's day stem (from the XKDG «Ke» chip, condition 1): one level up, see below.
   // A Wealth trigram that is the opposite of a Luck from the year does not count (as for the Wealth purpose, Edu 12/11).
   // ☯ = level (0–3) + 1 with the period on, − 1 with the period against. Weights and thresholds chosen by Claude.
   // CAUTION: on the eight winners only the PERIOD stands out from random days; window and day are not proven yet.
   var MONEY_LV = ['', 'good', 'strong', 'best'];
-  function moneyMeter(ctx, p, pers, Ls) {
+  function moneyMeter(ctx, p, pers, Ls, Pe) {
     var hx = p.hx, ln = p.per.line, mine = ln <= 3 ? hx.lower : hx.upper, oth = ln <= 3 ? hx.upper : hx.lower, K = ctx.prof.K, KS = ['heaven', 'earth', 'fame'];
     function lkOf(t) { return KS.filter(function (k) { return K[k].t === t; }); }
     function opOf(t) { return KS.filter(function (k) { return K[k].op === t; }); }
@@ -486,7 +487,14 @@
     day += wTri(p.daily.hex, 'day');
     if (Ls[3].r === 'W' || Ls[4].r === 'W') { day++; why.push('day line Wealth (' + (Ls[3].r === 'W' ? 'primary ' + Ls[3].b : 'outcome ' + Ls[4].b) + ')'); }
     var lv = day >= 2 && win >= 2 ? 3 : day >= 1 && win >= 2 ? 2 : day >= 1 && win >= 1 ? 1 : 0;
-    return { per: per, perTxt: perTxt, win: win, day: day, lv: lv, level: MONEY_LV[lv], why: why, skip: skip,
+    // 4) THE DAY IS WEALTH FOR THE PERSON'S DAY STEM (Edu 23/11/2026, «fai l'integrazione»): the first condition of the XKDG
+    //    «Ke» chip — the stem of the birth day controls the stem of the day of the date. On the eight wins 4 had it (chance 1 in 5),
+    //    both known ticket days included; the rest of the Ke count is like chance (claude/hlls-ke-vincite-famosi.md).
+    //    It raises the level by one step and lists the day even without a He Luo window.
+    var STEMS = '甲乙丙丁戊己庚辛壬癸', sp = STEMS.indexOf((ctx.Pn.day || '')[0]), sd = STEMS.indexOf(((Pe || {}).day || '')[0]), stemW = false;
+    if (sp >= 0 && sd >= 0 && CTRL[ST_EL[sp]] === ST_EL[sd]) { stemW = true; lv = Math.min(3, lv + 1);
+      why.unshift('Wealth day for your day stem: ' + ctx.Pn.day[0] + ' (' + ST_EL[sp] + ') controls the day stem ' + Pe.day[0] + ' (' + ST_EL[sd] + ')'); }
+    return { per: per, perTxt: perTxt, win: win, day: day, stemW: stemW, lv: lv, level: MONEY_LV[lv], why: why, skip: skip,
       adj: Math.max(-3, Math.min(3, lv + (per > 0 ? 1 : per < 0 ? -1 : 0))) };
   }
   function thread(ctx, Pe, lon, key) {
@@ -618,7 +626,7 @@
       var lvl = sig.length >= 5 ? 'severe' : sig.length === 4 ? (six.length ? 'critical' : 'light') : null;
       if (lvl) alarm = { level: lvl, n: sig.length, sig: sig, six: six };
     }
-    var money = key === 'luck' && xkVar('luck') === 'money' ? moneyMeter(ctx, p, pers, Ls) : null; // Luck · $ (Edu 22/11/2026)
+    var money = key === 'luck' && xkVar('luck') === 'money' ? moneyMeter(ctx, p, pers, Ls, Pe) : null; // Luck · $ (Edu 22/11/2026)
     var adj = 0;
     if (key === 'luck') adj = money ? money.adj : LT.s;
     else if (key === 'cure') { if (need) [[p.daily.hex, 2, 'day'], [p.daily.block, 1, 'block']].forEach(function (x) { var q = yy(x[0]); if (q) { adj += q === need ? x[1] : -x[1]; cure.push(x[2] + ' hexagram: two ' + q + ' trigrams' + (q === need ? ' (what the chart needs)' : ' (the chart has too much of it)')); } }); }
@@ -1343,9 +1351,9 @@
           : '<span style="color:#777;">not favoured: ' + esc(f.no.join('; ')) + '</span>') + '</div>'; }
     if (th.key === 'luck') {
       if (th.money) { var M = th.money;
-        box += '<div style="margin-bottom:5px;padding-bottom:4px;border-bottom:1px dashed #ccc;"><b>$ Windfall</b> (ticket, prize) · <span style="' + (M.lv >= 2 ? G : '') + 'font-weight:600;">' + (M.lv ? M.level : 'no window') + '</span> · window ' + M.win + '/3 · day ' + M.day + '/2'
+        box += '<div style="margin-bottom:5px;padding-bottom:4px;border-bottom:1px dashed #ccc;"><b>$ Windfall</b> (ticket, prize) · <span style="' + (M.lv >= 2 ? G : '') + 'font-weight:600;">' + (M.lv ? M.level : 'no window') + '</span> · window ' + M.win + '/3 · day ' + M.day + '/2' + (M.stemW ? ' · day stem Wealth' : '')
           + '<div style="' + (M.per > 0 ? G : M.per < 0 ? Rd : 'color:#777;') + '">Period ' + esc(M.perTxt) + '</div>'
-          + (M.why.length ? '<div style="' + G + '">▲ ' + esc(M.why.join(' · ')) + '</div>' : '<div>No Wealth on the month line, the Lord, the day line or in the trigrams of block and day.</div>')
+          + (M.why.length ? '<div style="' + G + '">▲ ' + esc(M.why.join(' · ')) + '</div>' : '<div>No Wealth on the month line, the Lord, the day line, in the trigrams of block and day, or on the day stem.</div>')
           + (M.skip.length ? '<div style="color:#777;">' + esc(M.skip.join(' · ')) + '</div>' : '')
           + '<div style="font-size:10px;color:#999;">Days that resemble those of eight winners, not a probability of winning. Only the period is supported by the cases; window and day are not proven yet. The ☯ score uses this reading.</div></div>'; }
       box += th.luck.length ? '<div style="' + G + '">▲ ' + esc(th.luck.join(' · ')) + '</div>' : '<div>None of the three Luck in the hexagrams of this day.</div>';
