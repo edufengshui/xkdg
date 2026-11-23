@@ -506,8 +506,30 @@
       + (oi.length ? '<div style="font-size:12px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oi.join(', ') + '</div>' : '')
       + sixAnnTag(a.hex.n, 12)
       + '<div style="font-size:12px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
-      + lineBody(a.hex.n, a.moved, 'year', false, a.age) + hexText(a.hex.n));
+      + lineBody(a.hex.n, a.moved, 'year', false, a.age) + sixSteps(a, me, Y, !!ch.male) + hexText(a.hex.n));
     _sphT = pvT;
+  }
+  // The year in six steps (Edu 23/11/2026: «nell'annuale ogni linea governa due mesi, ma non vedo … questa cosa sviluppata nella
+  // predizione»): each line of the annual rules two months, line 1 from the Winter Solstice. Reading only, no score — on a test
+  // of about seventy known events the text of the two-month line did not follow the outcome; only the relation gave a hint
+  // (Children almost never on a bad event). Wording by Claude.
+  function sixSteps(a, me, Y, male) {
+    var L = NJ() && NJ()[a.hex.n] && NJ()[a.hex.n].lines, ms; if (!L) return '';
+    try { ms = msTST(Y, _hlLon); } catch (e) { return ''; }
+    var STEP = { Resource: ['Parent', '#6a1b9a', 'support, studies, documents and the people who help'], Output: ['Children', '#1565c0', 'creating, expressing, teaching; troubles loosen'],
+      Wealth: ['Wealth', '#2e7d32', 'money and the things owned' + (male ? '; the partner' : '')], 'Officer / Ghost': ['Ghost', '#c62828', 'pressure, duties and challenges' + (male ? '' : '; the partner') + ': handle with care'],
+      Companion: ['Brothers', '#6d4c41', 'friends, partners and competition; money goes out easily'] };
+    var t = TX() && TX()[a.hex.n], now = Date.now(), out = '';
+    try { for (var k = 1; k <= 6; k++) {
+      var s0 = dayMs(ms[2 * k - 2].start), e0 = dayMs(ms[2 * k].start || ms[2 * k].end) - DAY, st = STEP[relOf(me, L[k - 1].el)]; if (!st) continue;
+      var isNow = now >= s0 && now < e0 + DAY, tl = t && t.lines && t.lines[k];
+      out += '<div style="border-left:3px solid ' + st[1] + ';padding:3px 8px;margin:4px 0;border-radius:3px;' + (isNow ? 'background:#fff8e1;' : '') + '">'
+        + '<div style="font-size:12px;"><b>' + fmtR(s0, e0) + '</b> · line ' + k + ' ' + L[k - 1].branch + ' <b style="color:' + st[1] + ';">' + st[0] + '</b>'
+        + (k === a.moved ? ' · <span style="color:#e65100;">★ the moved line: the heart of the year</span>' : '') + (isNow ? ' · <b>now</b>' : '') + '</div>'
+        + '<div style="font-size:12px;color:#555;">' + esc(st[2].charAt(0).toUpperCase() + st[2].slice(1)) + '.</div>'
+        + (tl ? '<div style="font-size:12px;color:#777;"><i>“' + esc(tl.statement) + '”</i></div>' : '') + '</div>';
+    } } catch (e) { return ''; }
+    return out ? '<div style="font-size:13px;font-weight:600;color:#4527a0;margin-top:10px;">The year in six steps · each line rules two months</div>' + out : '';
   }
   root.xkdgHLDerived = derivedPopup;
   root.xkdgHLYearPop = yearPopup;
