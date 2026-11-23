@@ -492,9 +492,12 @@
     //    both known ticket days included; the rest of the Ke count is like chance (claude/hlls-ke-vincite-famosi.md).
     //    It raises the level by one step and lists the day even without a He Luo window.
     var STEMS = '甲乙丙丁戊己庚辛壬癸', sp = STEMS.indexOf((ctx.Pn.day || '')[0]), sd = STEMS.indexOf(((Pe || {}).day || '')[0]), stemW = false;
-    if (sp >= 0 && sd >= 0 && CTRL[ST_EL[sp]] === ST_EL[sd]) { stemW = true; lv = Math.min(3, lv + 1);
+    // «$$» (xkdg_xk_variant_luck = money2; Edu 23/11/2026, «la versione che pesa di più», he will also use the hour): two steps
+    // instead of one here, and in the scan each Ke condition of the HOUR adds a ☯ point (app-bazi.js _hlApply, max +2).
+    var heavy = xkVar('luck') === 'money2';
+    if (sp >= 0 && sd >= 0 && CTRL[ST_EL[sp]] === ST_EL[sd]) { stemW = true; lv = Math.min(3, lv + (heavy ? 2 : 1));
       why.unshift('Wealth day for your day stem: ' + ctx.Pn.day[0] + ' (' + ST_EL[sp] + ') controls the day stem ' + Pe.day[0] + ' (' + ST_EL[sd] + ')'); }
-    return { per: per, perTxt: perTxt, win: win, day: day, stemW: stemW, lv: lv, level: MONEY_LV[lv], why: why, skip: skip,
+    return { per: per, perTxt: perTxt, win: win, day: day, stemW: stemW, heavy: heavy, lv: lv, level: MONEY_LV[lv], why: why, skip: skip,
       adj: Math.max(-3, Math.min(3, lv + (per > 0 ? 1 : per < 0 ? -1 : 0))) };
   }
   function thread(ctx, Pe, lon, key) {
@@ -626,7 +629,7 @@
       var lvl = sig.length >= 5 ? 'severe' : sig.length === 4 ? (six.length ? 'critical' : 'light') : null;
       if (lvl) alarm = { level: lvl, n: sig.length, sig: sig, six: six };
     }
-    var money = key === 'luck' && xkVar('luck') === 'money' ? moneyMeter(ctx, p, pers, Ls, Pe) : null; // Luck · $ (Edu 22/11/2026)
+    var money = key === 'luck' && /^money2?$/.test(xkVar('luck')) ? moneyMeter(ctx, p, pers, Ls, Pe) : null; // Luck · $ (Edu 22/11/2026)
     var adj = 0;
     if (key === 'luck') adj = money ? money.adj : LT.s;
     else if (key === 'cure') { if (need) [[p.daily.hex, 2, 'day'], [p.daily.block, 1, 'block']].forEach(function (x) { var q = yy(x[0]); if (q) { adj += q === need ? x[1] : -x[1]; cure.push(x[2] + ' hexagram: two ' + q + ' trigrams' + (q === need ? ' (what the chart needs)' : ' (the chart has too much of it)')); } }); }

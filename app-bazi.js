@@ -4921,8 +4921,13 @@ function _hlApply(results, rerender) {
         results.forEach(function (r) { var th = sc.by[r.isoDate]; if (th) { var pts = XKDGHeluoDS.xkPts ? XKDGHeluoDS.xkPts(th) : th.adj; r._hl = th; r._hlPts = pts; r._hlAdj = Math.round(r.score * 0.05 * pts * 10) / 10; } });
         // Luck · $ Windfall (Edu 23/11/2026: «devono apparire solo quelle»): only the XKDG dates whose He Luo day is at least
         // "good" for the windfall (heluo-ds.js moneyMeter). No note on top (Edu 23/11: the score says it). The three Luck: as before.
-        if (key === 'luck' && XKDGHeluoDS.xkVar && XKDGHeluoDS.xkVar('luck') === 'money') {
+        if (key === 'luck' && XKDGHeluoDS.xkVar && /^money2?$/.test(XKDGHeluoDS.xkVar('luck'))) {
             results = results.filter(function (r) { return r._hl && r._hl.money && r._hl.money.lv >= 1; });
+            // «$$» (Edu 23/11/2026, he chooses the hour too): each Ke condition of that hour (the XKDG «Ke» count of the row)
+            // adds one ☯ point, max +2; He Luo total capped at +4 (20%), as with the Favour levels.
+            if (XKDGHeluoDS.xkVar('luck') === 'money2') results.forEach(function (r) {
+                var kb = Math.min(2, r.keScore || 0); if (!kb) return;
+                r._hlPts = Math.min(4, (r._hlPts || 0) + kb); r._hlAdj = Math.round(r.score * 0.05 * r._hlPts * 10) / 10; });
         }
         else if (key === 'luck') results = results.filter(function (r) { return r._hl && r._hl.luck.length; });
         // Correct (Edu 13/11/2026): the problem of the period on top, then only the XKDG days that are also days to correct it
@@ -5011,7 +5016,7 @@ function renderScanResults(results, mode) {
     // He Luo (Edu, 11/11/2026): only on the favourable dates, after the XKDG filter — it never adds or removes a date by score
     if (!hasNegSort) {
         results = _hlApply(results, function () { try { renderScanResults(_hlAll, _hlMode); } catch (e) {} });
-        if (results.length === 0) { container.innerHTML = purposeHeader + sortToggleHTML + (_hlScanNote ? '<div style="font-size:11px;color:#5e35b1;margin-bottom:6px;">' + _hlScanNote + '</div>' : '') + '<div class="scan-empty">' + (_hlPurposeKey() === 'luck' && window.XKDGHeluoDS && XKDGHeluoDS.xkVar && XKDGHeluoDS.xkVar('luck') === 'money' ? 'No favourable XKDG date has a $ window in this period.' : _hlPurposeKey() === 'correct' ? 'No favourable XKDG date is also a He Luo day to correct the problem in this range.' : 'No favourable date with one of the three He Luo Luck in this range.') + '</div>'; return; }
+        if (results.length === 0) { container.innerHTML = purposeHeader + sortToggleHTML + (_hlScanNote ? '<div style="font-size:11px;color:#5e35b1;margin-bottom:6px;">' + _hlScanNote + '</div>' : '') + '<div class="scan-empty">' + (_hlPurposeKey() === 'luck' && window.XKDGHeluoDS && XKDGHeluoDS.xkVar && /^money2?$/.test(XKDGHeluoDS.xkVar('luck')) ? 'No favourable XKDG date has a $ window in this period.' : _hlPurposeKey() === 'correct' ? 'No favourable XKDG date is also a He Luo day to correct the problem in this range.' : 'No favourable date with one of the three He Luo Luck in this range.') + '</div>'; return; }
     } else results.forEach(r => { r._hl = null; r._hlAdj = 0; });
     const _hlNoteHtml = _hlScanNote ? '<div style="font-size:11px;color:#5e35b1;margin-bottom:6px;">' + _hlScanNote + '</div>' : '';
     const maxScore = hasNegSort
@@ -6331,7 +6336,7 @@ function onPurposeChange() {
 var XK_VARIANTS = { speak: [['show', 'Show / new product · Children'], ['convince', 'Convince (teacher, politician) · Ghost + Parent'], ['reassure', 'Reassure (insurance, real estate) · Parent']],
     legal: [['defend', 'Defend (we are attacked) · Parent'], ['act', 'Act (we start the case) · Ghost + Wealth']],
     // Luck · $ (Edu 22/11/2026): windfall — the period switch, then Wealth on month, block and day (heluo-ds.js moneyMeter)
-    luck: [['', '🍀 The three Luck'], ['money', '$ Windfall · ticket, prize']] };
+    luck: [['', '🍀 The three Luck'], ['money', '$ Windfall · ticket, prize'], ['money2', '$$ Windfall · day stem ×2 + Ke of the hour']] };
 function xkdgSyncPurposeVariant() {
     var el = document.getElementById('purpose-variant'), p = (document.getElementById('purpose-select') || {}).value || '';
     if (!el) return;
