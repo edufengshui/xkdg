@@ -1060,7 +1060,8 @@
           date: { type: 'string', description: 'Recommended date YYYY-MM-DD.' },
           hour: { type: 'string', description: 'Hour branch of the recommended double-hour (e.g. "Wu" or "\u5348").' },
           direction: { type: 'string', description: 'Optional palace direction to highlight (N, NE, E, SE, S, SW, W, NW).' },
-          label: { type: 'string', description: 'Optional short label for the button (e.g. house name + date).' }
+          label: { type: 'string', description: 'Optional short label for the button (e.g. house name + date).' },
+          chart: { type: 'string', enum: ['flying', 'rotating'], description: 'Which QMDJ hour chart the button opens. flying (DEFAULT) = Feng Shui: water, aquarium, fountain, activation of a palace or star of the house. rotating = ONLY for a human action towards a direction (travel, move, going somewhere). Never rotating for Feng Shui.' }
         },
         required: ['date', 'hour']
       }
@@ -3862,8 +3863,8 @@
   var _VB_BR_ORDER = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
   var _VB_BR_HAN = { Zi:'\u5b50', Chou:'\u4e11', Yin:'\u5bc5', Mao:'\u536f', Chen:'\u8fb0', Si:'\u5df3', Wu:'\u5348', Wei:'\u672a', Shen:'\u7533', You:'\u9149', Xu:'\u620c', Hai:'\u4ea5' };
   var _VB_HAN2PIN = { '\u5b50':'Zi','\u4e11':'Chou','\u5bc5':'Yin','\u536f':'Mao','\u8fb0':'Chen','\u5df3':'Si','\u5348':'Wu','\u672a':'Wei','\u7533':'Shen','\u9149':'You','\u620c':'Xu','\u4ea5':'Hai' };
-  var _VB_STEMS_HAN = ['\u7532','\u4e59','\u4e19','\u4e01','\u6208','\u5df1','\u5e9a','\u8f9b','\u58ec','\u7678'];
-  var _VB_ZI_BY_DAYSTEM = { '\u7532':'\u7532','\u5df1':'\u7532','\u4e59':'\u4e19','\u5e9a':'\u4e19','\u4e19':'\u6208','\u8f9b':'\u6208','\u4e01':'\u5e9a','\u58ec':'\u5e9a','\u6208':'\u58ec','\u7678':'\u58ec' };
+  var _VB_STEMS_HAN = ['\u7532','\u4e59','\u4e19','\u4e01','\u620a','\u5df1','\u5e9a','\u8f9b','\u58ec','\u7678'];
+  var _VB_ZI_BY_DAYSTEM = { '\u7532':'\u7532','\u5df1':'\u7532','\u4e59':'\u4e19','\u5e9a':'\u4e19','\u4e19':'\u620a','\u8f9b':'\u620a','\u4e01':'\u5e9a','\u58ec':'\u5e9a','\u620a':'\u58ec','\u7678':'\u58ec' };
   var _VB_DIR2PAL = { SE:4, S:9, SW:2, E:3, C:5, W:7, NE:8, N:1, NW:6 };
   function _vbBranch(s){
     if(s == null) return null; s = String(s).trim();
@@ -3915,9 +3916,11 @@
     var dir = String(input.direction || '').trim().toUpperCase();
     var palace = _VB_DIR2PAL[dir] || null;
     var label = input.label || ('Controllo: ' + iso + ' \u00b7 ' + _VB_BR_HAN[bp] + (dir ? (' \u00b7 ' + dir) : ''));
-    try { if(window.XKDGChat && window.XKDGChat.addVerifyButton) window.XKDGChat.addVerifyButton({ date: iso, hourIndex: hp.hourIndex, hGan: hp.hGan, hZhi: hp.hZhi, palace: palace, label: label }); }
+    // Edu 23/11/2026: Feng Shui is read on the FLYING chart. The button opened the rotating one for everything.
+    var mode = String(input.chart || '').toLowerCase() === 'rotating' ? 'rotating' : 'flying';
+    try { if(window.XKDGChat && window.XKDGChat.addVerifyButton) window.XKDGChat.addVerifyButton({ date: iso, hourIndex: hp.hourIndex, hGan: hp.hGan, hZhi: hp.hZhi, palace: palace, label: label, mode: mode }); }
     catch(e){ return { error: 'Could not add the button.' }; }
-    return { ok: true, button_shown: true, date: iso, hour: _VB_BR_HAN[bp], hour_pillar: hp.hGan + hp.hZhi, palace: palace };
+    return { ok: true, button_shown: true, date: iso, hour: _VB_BR_HAN[bp], hour_pillar: hp.hGan + hp.hZhi, palace: palace, chart: mode };
   }
 
   // Is daylight saving in effect on date d (per the device timezone)? Standard time has the larger UTC offset;
@@ -10757,13 +10760,13 @@
       wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:6px;' }, '\uD83D\uDD0D ' + (info.label || 'Check')));
       var btn = elc('button', { style:
         'width:100%;padding:9px;border:0;border-radius:8px;background:#6a1b9a;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' },
-        'Apri data XKDG + carta QMDJ');
+        'Apri data XKDG + carta QMDJ ' + (info.mode === 'rotating' ? 'rotante' : 'volante'));
       btn.addEventListener('click', function () {
         var okDate = false, okChart = false;
         try { if (typeof window.loadDateIntoMain === 'function' && info.date) { window.loadDateIntoMain(info.date, info.hourIndex); okDate = true; } } catch (e) {}
         try {
           if (typeof window.showQimenChart === 'function' && info.date && info.hGan && info.hZhi) {
-            var _html = window.showQimenChart(info.date, info.hGan, info.hZhi, info.palace, { mode: 'rotating', returnHtml: true });
+            var _html = window.showQimenChart(info.date, info.hGan, info.hZhi, info.palace, { mode: info.mode === 'rotating' ? 'rotating' : 'flying', returnHtml: true });
             if (_html) { _vbShowChartOverlay(_html); okChart = true; }
           }
         } catch (e) {}
