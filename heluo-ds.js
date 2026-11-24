@@ -427,7 +427,8 @@
   var XK_REL = { wealth: 'W', career: 'G', speak: 'C', legal: 'P', health: 'C', journey: 'C', support: 'P' }; // relationship: W man, G woman
   var XK_FALL = { relationship: { M: [['W', 1], ['P', 0.5]], F: [['G', 1], ['P', 0.5]] }, speak: { convince: [['G', 1], ['P', 1]], show: [['C', 1]], reassure: [['P', 1]] }, legal: { defend: [['P', 1]], act: [['G', 1], ['W', 0.5]] } };
   var XK_VDEF = { speak: 'show', legal: 'defend' };
-  function xkVar(key) { var v = ''; try { v = localStorage.getItem('xkdg_xk_variant_' + key) || ''; } catch (e) {} return v; }
+  var _xkForce = null; // [purpose, variant] while the Date Selection tab of the He Luo window scans an experimental purpose (expScan)
+  function xkVar(key) { if (_xkForce && _xkForce[0] === key) return _xkForce[1]; var v = ''; try { v = localStorage.getItem('xkdg_xk_variant_' + key) || ''; } catch (e) {} return v; }
   function xkRels(key, male) {
     var S = (root.XKDG_HELUO_READINGS || {}).spheres, E = S && S.resolve && S.table[key] && !S.table[key].reading ? S.resolve(key, male, xkVar(key)) : null;
     if (E) return E.score;
@@ -1148,10 +1149,64 @@
   }
 
   // ── Date Selection tab ─────────────────────────────────────────────────────
+  // Experimental purposes (Edu 24/11/2026: «sono sperimentali … mettili tutte nella scheda sopra»): the same readings as next
+  // to PURPOSE in the XKDG Date Selection (Wealth · Sell, Luck · ★ Fame, $ and $$), here on every day of the range — no XKDG
+  // filter of favourable dates and no hour (so «$$» is only the day stem ×2, without the Ke of the hour).
+  // id → [purpose of thread(), variant, label]
+  var EXP_PURP = { sell: ['wealth', 'sell', 'Sell · a sale, a contract (experimental)'], fame: ['luck', 'fame', '★ Fame · election, prize, recognition (experimental)'],
+    money: ['luck', 'money', '$ Windfall · ticket, prize (experimental)'], money2: ['luck', 'money2', '$$ Windfall · day stem ×2 (experimental)'] };
+  function expScan(ctx, fromMs, toMs, lon, id) {
+    var E = EXP_PURP[id], out = [], D = 86400000, prev = _xkForce;
+    _xkForce = [E[0], E[1]];
+    try {
+      for (var t = fromMs, n = 0; t <= toMs && n < 366; t += D, n++) {
+        var dt = new Date(t), Pe = pillarsTstNoon(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate(), lon), th = null;
+        try { th = Pe && thread(ctx, Pe, lon, E[0]); } catch (e) { th = null; }
+        if (th) out.push({ date: t, Pe: Pe, th: th, adj: th.adj || 0, sum: xkSummary(th) });
+      }
+    } finally { _xkForce = prev; }
+    return { id: id, days: out, sorted: out.slice().sort(function (x, y) { return y.adj - x.adj || x.date - y.date; }) };
+  }
+  function expDetail(g) {
+    var th = g.th, G = 'color:#2e7d32;', Rd = 'color:#c62828;', a = [];
+    if (th.fame) { var F = th.fame;
+      a.push('<div style="' + (F.yr ? G : 'color:#777;') + '">Year ' + esc(F.yrTxt) + '</div>');
+      a.push(F.why.length ? '<div style="' + G + '">▲ ' + esc(F.why.join(' · ')) + '</div>' : '<div>The day line and its outcome are not in ' + F.F + ', your Fame Luck.</div>'); }
+    if (th.money) { var M = th.money;
+      a.push('<div>window ' + M.win + '/3 · day ' + M.day + '/2' + (M.stemW ? ' · day stem Wealth' : '') + '</div>');
+      a.push('<div style="' + (M.per > 0 ? G : M.per < 0 ? Rd : 'color:#777;') + '">Period ' + esc(M.perTxt) + '</div>');
+      a.push(M.why.length ? '<div style="' + G + '">▲ ' + esc(M.why.join(' · ')) + '</div>' : '<div>No Wealth on the month line, the Lord, the day line, in the trigrams of block and day, or on the day stem.</div>');
+      if (M.skip.length) a.push('<div style="color:#777;">' + esc(M.skip.join(' · ')) + '</div>'); }
+    if (th.sell) { var S = th.sell;
+      a.push('<div style="' + (S.lv ? G : 'color:#777;') + '">Year and period ' + S.level + (S.why.length ? ': ' + esc(S.why.join(' · ')) : ': neither the line of the period nor the moved line of the year is Wealth, and no Heaven or Earth Luck in the annual hexagram') + '</div>');
+      if (th.on.length) a.push('<div style="' + G + '">▲ Wealth on ' + esc(th.on.map(function (L) { return XK_LBL[L.k] + ' ' + L.b + (L.hidden ? ' (hidden)' : ''); }).join(' · ')) + '</div>');
+      if (th.price.length) a.push('<div style="' + Rd + '">▼ Brothers (the price) on ' + esc(th.price.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ')) + '</div>');
+      if (th.steal && th.steal.length) a.push('<div style="' + Rd + '">▼ Brothers steal the Wealth (兄弟劫財) on ' + esc(th.steal.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ')) + '</div>');
+      if (th.loss && th.loss.length) a.push('<div style="' + Rd + '">▼ in play, but at a loss (unfavourable text)</div>');
+      if (th.alarm) a.push('<div style="' + Rd + '">⚠ ' + esc(th.alarm.level + ' day: ' + th.alarm.sig.join('; ')) + '</div>'); }
+    var p = th.p;
+    a.push('<div style="color:#777;margin-top:3px;">cycle ' + p.id.cycle[0] + ' l' + p.id.cycle[1] + ' · annual ' + p.id.year[0] + ' l' + p.id.year[1] + ' · monthly ' + p.month.hex.n + ' l' + p.month.line + ' · block ' + p.id.lord[0] + ' Lord l' + p.id.lord[1] + ' · day line l' + p.id.day[1] + ' → day ' + p.id.dayHex[0] + '</div>');
+    return '<div style="border:1px solid #b39ddb;background:#f7f3fd;border-radius:8px;padding:8px;font-size:12px;line-height:1.55;">' + a.join('') + '</div>';
+  }
+  function expResults(chart, r) {
+    var E = EXP_PURP[r.id], n = r.days.length;
+    if (!n) return '<div style="font-size:12px;color:#888;">No day inside the Xian Tian / Hou Tian cycles.</div>';
+    var list = _st.all ? r.days : r.sorted.slice(0, 15);
+    var h = '<div style="font-size:12px;color:#333;margin:4px 0;">' + (_st.all ? 'All ' + n + ' days in date order' : 'Best 15 of ' + n + ' days') + ' · <b>' + esc(E[2]) + '</b> · '
+      + '<a href="javascript:void 0" onclick="xkdgHLDSAll()" style="color:#5e35b1;">' + (_st.all ? 'show the best' : 'show all days') + '</a></div>';
+    list.forEach(function (g) {
+      var on = _st.open === g.date;
+      h += '<div onclick="xkdgHLDSOpen(' + g.date + ')" style="cursor:pointer;border-top:1px solid #eee;padding:5px 4px;' + (on ? 'background:#ede7f6;' : '') + '">'
+        + '<b>' + fmtDate(g.date) + '</b> <span style="font-size:10px;color:#999;">' + g.Pe.day + ' day · ' + g.Pe.month + ' month</span> · <b style="color:' + (g.adj > 0 ? '#2e7d32' : g.adj < 0 ? '#c62828' : '#777') + ';">☯ ' + sgn(g.adj) + '</b>'
+        + '<div style="font-size:11px;color:#444;">' + esc(g.sum) + '</div></div>';
+      if (on) h += '<div style="padding:2px 4px 10px;">' + expDetail(g) + '</div>';
+    });
+    return h + '<div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Experimental (Edu, 24/11/2026). Every day of the range, He Luo only: no XKDG filter of favourable dates and no hour. ☯ = the points this reading would add to the XKDG score (5% each). Tendencies seen on a few dozen cases, not rules.</div>';
+  }
   var _st = { mode: 'score', purpose: 'wealth', from: null, to: null, place: 'gps', res: null, open: null };
   // pre-fill from the XKDG Date Selection (heluo-lishu.js openHeluoLishuFor) and run at the next render
   root.xkdgHLDSPreset = function (o) {
-    if (o.purpose && PURPOSES[o.purpose]) _st.purpose = o.purpose;
+    if (o.purpose && (PURPOSES[o.purpose] || EXP_PURP[o.purpose])) _st.purpose = o.purpose;
     if (o.from) { _st.from = o.from; _st.to = o.to || o.from; }
     _st.res = null; _st.open = null; _st.autorun = true;
   };
@@ -1168,7 +1223,8 @@
     var pl = placeLon(chart.c);
     var h = '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px;">'
       + '<div><label style="' + Lb + '">Mode</label><select id="hlds-mo" style="' + F + 'max-width:100%;">' + CF_MODES.map(function (m) { return '<option value="' + m[0] + '"' + (m[0] === _st.mode ? ' selected' : '') + '>' + m[1] + '</option>'; }).join('') + '</select></div>'
-      + '<div><label style="' + Lb + '">Purpose (score mode)</label><select id="hlds-pu" style="' + F + '">' + Object.keys(PURPOSES).map(function (k) { return '<option value="' + k + '"' + (k === _st.purpose ? ' selected' : '') + '>' + PURPOSES[k].label + '</option>'; }).join('') + '</select></div>'
+      + '<div><label style="' + Lb + '">Purpose (score mode)</label><select id="hlds-pu" style="' + F + '">' + Object.keys(PURPOSES).map(function (k) { return '<option value="' + k + '"' + (k === _st.purpose ? ' selected' : '') + '>' + PURPOSES[k].label + '</option>'; }).join('')
+        + Object.keys(EXP_PURP).map(function (k) { return '<option value="' + k + '"' + (k === _st.purpose ? ' selected' : '') + '>' + EXP_PURP[k][2] + '</option>'; }).join('') + '</select></div>'
       + '<div><label style="' + Lb + '">From</label><input id="hlds-from" type="date" value="' + _st.from + '" style="' + F + '"></div>'
       + '<div><label style="' + Lb + '">To (max 1 year)</label><input id="hlds-to" type="date" value="' + _st.to + '" style="' + F + '"></div>'
       + '<div><label style="' + Lb + '">Place</label><select id="hlds-pl" style="' + F + '"><option value="gps"' + (_st.place === 'gps' ? ' selected' : '') + '>Current GPS</option><option value="birth"' + (_st.place === 'birth' ? ' selected' : '') + '>Birth place</option></select></div>'
@@ -1191,7 +1247,7 @@
     out.innerHTML = '<div style="font-size:12px;color:#888;">Calculating…</div>';
     setTimeout(function () {
       try {
-        var ctx = context(chart.R, chart.Pn, chart.male), r = _st.mode === 'score' ? scan(ctx, a, b, pl.lon, _st.purpose) : { cf: cfScan(ctx, a, b, pl.lon, _st.mode) };
+        var ctx = context(chart.R, chart.Pn, chart.male), r = _st.mode === 'score' ? (EXP_PURP[_st.purpose] ? { exp: expScan(ctx, a, b, pl.lon, _st.purpose) } : scan(ctx, a, b, pl.lon, _st.purpose)) : { cf: cfScan(ctx, a, b, pl.lon, _st.mode) };
         _st.res = { key: key(chart), r: r, lon: pl.lon }; results(chart);
       } catch (e) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">Calculation failed: ' + esc(e && e.message) + '</div>'; }
     }, 20);
@@ -1201,6 +1257,7 @@
   function results(chart) {
     var out = $('hlds-res'), r = _st.res.r; if (!out) return;
     if (r.cf) { out.innerHTML = cfResults(chart, r.cf); return; }
+    if (r.exp) { out.innerHTML = expResults(chart, r.exp); return; }
     if (!r.days.length) { out.innerHTML = '<div style="font-size:12px;color:#888;">No day inside the Xian Tian / Hou Tian cycles.</div>'; return; }
     var list = _st.all ? r.days : r.sorted.slice(0, 15), TD = 'padding:4px 5px;', n = r.days.length;
     var h = '<div style="font-size:12px;color:#333;margin:4px 0;">' + (_st.all ? 'All ' + n + ' days in date order' : 'Best 15 of ' + n + ' days') + ' · purpose <b>' + _st.purpose + '</b> · '
