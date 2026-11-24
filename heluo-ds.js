@@ -500,6 +500,42 @@
     return { per: per, perTxt: perTxt, win: win, day: day, stemW: stemW, heavy: heavy, lv: lv, level: MONEY_LV[lv], why: why, skip: skip,
       adj: Math.max(-3, Math.min(3, lv + (per > 0 ? 1 : per < 0 ? -1 : 0))) };
   }
+  // Luck · ★ Fame — public recognition: an election, a prize, a public triumph (Edu 24/11/2026; study notes in the HLLS
+  // project: claude/hlls-fame-luck-famosi.md, hlls-fame-ghost-parent.md, hlls-fame-eventi-pubblici.md, hlls-fame-giorno.md).
+  // Chosen next to PURPOSE: 🍀 Luck → "★ Fame" (localStorage xkdg_xk_variant_luck = fame).
+  // 1) YEAR (the switch): ON if the moved line of the annual hexagram sits in the Fame Luck trigram (15 of 68 first-fame
+  //    dates and 14 of 62 public events, chance 9); STRONG if that line is Parent (11 cases in the two tests, chance 4).
+  // 2) DAY: the day line (primary, block hexagram) or its outcome (day hexagram) sits in the Fame Luck trigram (22 of 62
+  //    public events, chance 15–16: a tendency). Period, monthly hexagram and Lord of the Block: like chance, not used.
+  // ☯ = year (0, 1, 2) + day (0, 1). Weights chosen by Claude. Presentations of products do not follow this (see Wealth · Sell).
+  var FAME_LV = ['no', 'good', 'strong', 'best'];
+  function fameMeter(ctx, p, pers, Ls) {
+    var F = ctx.prof.K.fame.t, a = p.annual, dh = p.daily, tri = function (h, l) { return l <= 3 ? h.lower : h.upper; };
+    var La = NJ()[a.hex.n].lines[a.moved - 1], ra = rel(pers, La.el), yr = 0, yrTxt, why = [];
+    if (tri(a.hex, a.moved) === F) { yr = ra === 'P' ? 2 : 1;
+      yrTxt = (yr === 2 ? 'ON, strong' : 'ON') + ': the moved line of the annual hexagram ' + a.hex.n + ' (line ' + a.moved + ' ' + La.branch + ', ' + REL[ra] + ') sits in ' + F + ', your Fame Luck' + (yr === 2 ? ' — Parent there: recognition given by others' : ''); }
+    else yrTxt = 'OFF: the moved line of the annual hexagram ' + a.hex.n + ' (line ' + a.moved + ' ' + La.branch + ') is not in ' + F + ', your Fame Luck';
+    if (tri(dh.block, dh.line) === F) why.push('day line ' + Ls[3].b + ' in ' + F + ' (block hexagram ' + dh.block.n + ')');
+    if (tri(dh.hex, dh.line) === F) why.push('outcome of the day line ' + Ls[4].b + ' in ' + F + ' (day hexagram ' + dh.hex.n + ')');
+    var day = why.length ? 1 : 0, lv = Math.min(3, yr + day);
+    return { F: F, yr: yr, yrTxt: yrTxt, day: day, why: why, lv: lv, level: FAME_LV[lv], adj: lv };
+  }
+  // Wealth · Sell — a sale, a contract in which one sells something of one's own (Edu 24/11/2026; study notes
+  // claude/hlls-vendite-famosi.md and hlls-presentazioni-prodotti.md). localStorage xkdg_xk_variant_wealth = sell.
+  // The days are scored as for Wealth (Wealth on month line, Lord, day line; Brothers the price: what the 23 sales confirm —
+  // month line Wealth 11 of 23, chance 5; Brothers on the month line 1, chance 5). New here, the switch of YEAR and PERIOD:
+  // the line of the period is Wealth (8, chance 4–5), the moved line of the year is Wealth (7, chance 4), the Heaven or Earth
+  // Luck trigram is in the annual hexagram (10 and 11, chance 6). ON = one of them: +1 ☯. Weight chosen by Claude; no minus
+  // when it is off (the sales show nothing against).
+  function sellMeter(ctx, p, pers) {
+    var hx = p.hx, ln = p.per.line, a = p.annual, Lp = NJ()[hx.n].lines[ln - 1], La = NJ()[a.hex.n].lines[a.moved - 1], K = ctx.prof.K, why = [], n = 0;
+    if (rel(pers, Lp.el) === 'W') { n++; why.push('the line of the period is Wealth (' + hx.n + ' line ' + ln + ' ' + Lp.branch + ')'); }
+    if (rel(pers, La.el) === 'W') { n++; why.push('the moved line of the year is Wealth (' + a.hex.n + ' line ' + a.moved + ' ' + La.branch + ')'); }
+    var lk = ['heaven', 'earth'].filter(function (k) { return !K[k].vuoto && (a.hex.upper === K[k].t || a.hex.lower === K[k].t); });
+    if (lk.length) why.push('your ' + lk.map(cap).join(' and ') + ' Luck (' + lk.map(function (k) { return K[k].t; }).filter(function (t, i, A) { return A.indexOf(t) === i; }).join(', ') + ') is in the annual hexagram ' + a.hex.n);
+    var lv = n >= 2 || (n === 1 && lk.length) ? 2 : (n === 1 || lk.length) ? 1 : 0;
+    return { lv: lv, level: ['off', 'on', 'on, strong'][lv], why: why, adj: lv ? 1 : 0 };
+  }
   function thread(ctx, Pe, lon, key) {
     var p = predict(ctx.R, Pe, lon); if (p.none) return null;
     var pers = persona(p.hx, p.per.line), T = [Pe.year[1], Pe.month[1], Pe.day[1]], yv = natalVoids(ctx.Pn).list, mb0 = ctx.Pn.month[1];
@@ -630,12 +666,14 @@
       if (lvl) alarm = { level: lvl, n: sig.length, sig: sig, six: six };
     }
     var money = key === 'luck' && /^money2?$/.test(xkVar('luck')) ? moneyMeter(ctx, p, pers, Ls, Pe) : null; // Luck · $ (Edu 22/11/2026)
+    var fame = key === 'luck' && xkVar('luck') === 'fame' ? fameMeter(ctx, p, pers, Ls) : null; // Luck · ★ Fame (Edu 24/11/2026)
+    var sell = key === 'wealth' && xkVar('wealth') === 'sell' ? sellMeter(ctx, p, pers) : null; // Wealth · Sell (Edu 24/11/2026)
     var adj = 0;
-    if (key === 'luck') adj = money ? money.adj : LT.s;
+    if (key === 'luck') adj = money ? money.adj : fame ? fame.adj : LT.s;
     else if (key === 'cure') { if (need) [[p.daily.hex, 2, 'day'], [p.daily.block, 1, 'block']].forEach(function (x) { var q = yy(x[0]); if (q) { adj += q === need ? x[1] : -x[1]; cure.push(x[2] + ' hexagram: two ' + q + ' trigrams' + (q === need ? ' (what the chart needs)' : ' (the chart has too much of it)')); } }); }
-    else adj = Math.round(t / 3);
+    else adj = Math.round(t / 3) + (sell ? sell.adj : 0);
     adj = Math.max(-3, Math.min(3, adj));
-    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, X2: X2, w2: w2, A2: A2, on2: on2, price2: price2, variant: XK_FALL[key] && key !== 'relationship' ? (xkVar(key) || XK_VDEF[key]) : null, lines: Ls, t: t, adj: adj, money: money, on: on, price: price, later: later, tri: tri, luck: lk, opp: opp, luckD: LD, am: { n: p.id.year[0], l: p.month.line, s: amS }, crit: crit, surprise: surprise, turn: turn, dayLuck: !!(DAY_LUCK[key] && ctx.profD), need: need, cure: cure, yv: yv, loss: loss, steal: steal, collab: collab, alarm: alarm, sd: sd, so: so, chain: chain, critE: critE };
+    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, X2: X2, w2: w2, A2: A2, on2: on2, price2: price2, variant: XK_FALL[key] && key !== 'relationship' ? (xkVar(key) || XK_VDEF[key]) : sell ? 'sell' : fame ? 'fame' : null, lines: Ls, t: t, adj: adj, money: money, fame: fame, sell: sell, on: on, price: price, later: later, tri: tri, luck: lk, opp: opp, luckD: LD, am: { n: p.id.year[0], l: p.month.line, s: amS }, crit: crit, surprise: surprise, turn: turn, dayLuck: !!(DAY_LUCK[key] && ctx.profD), need: need, cure: cure, yv: yv, loss: loss, steal: steal, collab: collab, alarm: alarm, sd: sd, so: so, chain: chain, critE: critE };
   }
   // Hexagram of the hour (Edu 12/11 evening, version A, provisional): line k of the day hexagram rules two hours on the
   // branches (line 1 = 子丑 … line 6 = 戌亥; the 子 hour from 23:00 belongs to the next day). Odd hour = the day hexagram
@@ -1310,12 +1348,14 @@
       return a.join(' · '); }
     if (th.fav && th.fav.ok) a.push((th.fav.stars ? (th.fav.stars === 2 ? '★★ ' : '★ ') : '') + th.fav.level + ' for ' + REL[th.fav.X]);
     if (th.key === 'luck' && th.money) { var M$ = th.money; a.push('$ ' + (M$.lv ? M$.level : 'no window')); } // Edu 23/11/2026: no period or counts in the row, the score shows it
+    else if (th.key === 'luck' && th.fame) a.push('★ Fame ' + th.fame.level + (th.fame.yr ? '' : ' · year off'));
     else if (th.key === 'luck') { if (th.luck.length) a.push(th.luck.length + ' Luck'); if (th.opp.length) a.push(th.opp.length + ' opposite');
       if (th.luckD) a.push('day Luck ' + (th.luckD.s > 0 ? '+' : th.luckD.s < 0 ? '−' : '±') + Math.abs(th.luckD.s)); }
     else if (th.key === 'cure') { if (th.adj) a.push(th.adj > 0 ? 'brings the ' + th.need + ' the chart needs' : 'against the balance (chart needs ' + th.need + ')'); }
     else if (th.X) { if (th.on.length) a.push(REL[th.X] + ' on ' + th.on.map(function (L) { return L.b + (L.hidden ? ' (hidden)' : ''); }).join(' ')); if (th.X2 && th.on2.length) a.push(REL[th.X2] + ' on ' + th.on2.map(function (L) { return L.b; }).join(' ')); if (th.tri && th.tri.plus.length) a.push(REL[th.X] + ' in ' + th.tri.plus.length + ' trigram' + (th.tri.plus.length > 1 ? 's' : '')); if (th.price.length || (th.tri && th.tri.minus.length)) a.push('price: ' + REL[th.A]); if (th.tri && th.tri.gOn) a.push('Wealth feeds the Ghost'); if (th.later.length) a.push('fruits later');
       if (th.crit && th.crit.length) a.push('criticism'); if (th.surprise && th.surprise.length) a.push('⚡ hidden ' + th.surprise.map(function (L) { return L.b; }).join('')); if (th.turn) a.push('⚠ turn of the month');
       if (th.loss && th.loss.length) a.push('in play, but at a loss'); if (th.collab && th.collab.length) a.push('collaborators ' + th.collab.map(function (L) { return L.b; }).join('')); }
+    if (th.sell) a.push('Sell: year ' + th.sell.level);
     if (th.alarm && th.alarm.level !== 'light') a.unshift(th.alarm.level === 'severe' ? '⚠⚠ SEVERE DAY' : '⚠ CRITICAL DAY');
     else if (th.alarm) a.push('⚠ 4 danger signals');
     return a.join(' · ');
@@ -1352,7 +1392,16 @@
         + (f.ok ? '<span style="' + (f.lv >= 2 ? G : '') + 'font-weight:600;">' + (f.stars ? (f.stars === 2 ? '★★ ' : '★ ') : '') + f.level + '</span>' + (th.fvPts ? ' (+' + th.fvPts * 5 + '% to the score)' : '') + '<br>' + esc(f.why.join(' · '))
           + '<br>' + ([f.hours.actor ? 'the actor enters ' + f.hours.actor.pillar + ' ' + f.hours.actor.tst : '', f.hours.answer ? 'the answer ' + f.hours.answer.pillar + ' ' + f.hours.answer.tst : ''].filter(Boolean).join(' · ') || 'No particular hour')
           : '<span style="color:#777;">not favoured: ' + esc(f.no.join('; ')) + '</span>') + '</div>'; }
+    if (th.sell) { var SL = th.sell;
+      box += '<div style="margin-bottom:5px;padding-bottom:4px;border-bottom:1px dashed #ccc;"><b>Sell</b> (a sale, a contract) · year and period <span style="' + (SL.lv ? G : 'color:#777;') + 'font-weight:600;">' + SL.level + '</span>' + (SL.adj ? ' (+5% to the score)' : '')
+        + (SL.why.length ? '<div style="' + G + '">▲ ' + esc(SL.why.join(' · ')) + '</div>' : '<div style="color:#777;">Neither the line of the period nor the moved line of the year is Wealth, and no Heaven or Earth Luck in the annual hexagram.</div>')
+        + '<div style="font-size:10px;color:#999;">From 23 large sales: Wealth on the line (month line first), Brothers almost never on the month line. The days below are read as for Wealth. A tendency, not a rule.</div></div>'; }
     if (th.key === 'luck') {
+      if (th.fame) { var FM = th.fame;
+        box += '<div style="margin-bottom:5px;padding-bottom:4px;border-bottom:1px dashed #ccc;"><b>★ Fame</b> (election, prize, public recognition) · <span style="' + (FM.lv >= 2 ? G : '') + 'font-weight:600;">' + FM.level + '</span>'
+          + '<div style="' + (FM.yr ? G : 'color:#777;') + '">Year ' + esc(FM.yrTxt) + '</div>'
+          + (FM.why.length ? '<div style="' + G + '">▲ ' + esc(FM.why.join(' · ')) + '</div>' : '<div>The day line and its outcome are not in ' + FM.F + ', your Fame Luck.</div>')
+          + '<div style="font-size:10px;color:#999;">From 130 dates of famous people: the year is the part that stands out (above all elections), the day line is a tendency. Not for the launch of a product (see Wealth · Sell). The ☯ score uses this reading.</div></div>'; }
       if (th.money) { var M = th.money;
         box += '<div style="margin-bottom:5px;padding-bottom:4px;border-bottom:1px dashed #ccc;"><b>$ Windfall</b> (ticket, prize) · <span style="' + (M.lv >= 2 ? G : '') + 'font-weight:600;">' + (M.lv ? M.level : 'no window') + '</span> · window ' + M.win + '/3 · day ' + M.day + '/2' + (M.stemW ? ' · day stem Wealth' : '')
           + '<div style="' + (M.per > 0 ? G : M.per < 0 ? Rd : 'color:#777;') + '">Period ' + esc(M.perTxt) + '</div>'
