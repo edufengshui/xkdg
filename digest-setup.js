@@ -179,6 +179,17 @@
       '<button onclick="XKDGDigestSetup._copy()" style="margin-top:6px;padding:5px 12px;border-radius:6px;border:none;background:#2e7d32;color:#fff;cursor:pointer;">📋 Copy</button>' +
       '<div style="margin-top:10px;border-top:1px solid #ddd;padding-top:8px;"><b>All the people of the email</b> (every Build is kept here, by email):' +
       '<div id="xdg-list"></div>' +
+      // He Luo of a second reader (Edu 25/11/2026): a line with two addresses sends ITS He Luo to the first one only;
+      // the second reader gets their own when the line carries their birth data ("heluo_for"). Only where the He Luo is open.
+      ((typeof window.xkdgHeluoAllowed === 'function' && window.xkdgHeluoAllowed()) ?
+        '<div style="margin-top:8px;padding:8px;border:1px solid #b39ddb;border-radius:8px;background:#faf7ff;"><b>☯ He Luo of a second reader</b><br>' +
+        '<span style="color:#777;">For a line with two addresses: the second reader gets their own He Luo of the day.</span><br>' +
+        '<input id="xdg-hf-mail" type="email" placeholder="their email (as in the line)" style="width:100%;box-sizing:border-box;margin-top:5px;padding:5px;">' +
+        '<input id="xdg-hf-name" placeholder="name" style="width:100%;box-sizing:border-box;margin-top:5px;padding:5px;">' +
+        '<div style="margin-top:5px;">born <input id="xdg-hf-date" type="date" style="padding:4px;"> <input id="xdg-hf-time" type="time" style="padding:4px;"> ' +
+        '<select id="xdg-hf-sex" style="padding:4px;"><option value="F">woman</option><option value="M">man</option></select></div>' +
+        '<button onclick="XKDGDigestSetup._hfAdd()" style="margin-top:6px;padding:5px 12px;border-radius:6px;border:none;background:#5e35b1;color:#fff;cursor:pointer;">Add to the line</button> ' +
+        '<span id="xdg-hf-msg" style="color:#555;"></span></div>' : '') +
       '<button onclick="XKDGDigestSetup._copyAll()" style="margin-top:6px;padding:6px 12px;border-radius:6px;border:none;background:#4a148c;color:#fff;font-weight:bold;cursor:pointer;">📋 Copy the WHOLE secret</button>' +
       '<div style="color:#777;margin-top:6px;">Paste it as the whole value of the secret <b>XKDG_DIGEST_RECIPIENTS</b> (GitHub → Settings → Secrets and variables → Actions), replacing what is there. ' +
       'Build a person again after changing a house: their line is updated, the others stay.</div></div></details></div></div>';
@@ -200,7 +211,8 @@
     b.innerHTML = k.length ? k.map(function (e) {
       var o = l[e];
       return '<div style="display:flex;gap:6px;align-items:center;padding:2px 0;"><span style="flex:1;">' + (o.active === false ? '⏸ ' : '') + '<b>' + String(o.name).replace(/</g, '&lt;') + '</b> · ' + e.replace(/</g, '&lt;')
-           + ' · ' + (o.city || o.city_label || '') + ((o.houses || []).length ? ' · ' + o.houses.length + ' house(s)' : '') + '</span>'
+           + ' · ' + (o.city || o.city_label || '') + ((o.houses || []).length ? ' · ' + o.houses.length + ' house(s)' : '')
+           + (o.heluo_for ? Object.keys(o.heluo_for).map(function (a) { return ' · ☯ ' + String(o.heluo_for[a].name || a).replace(/</g, '&lt;'); }).join('') : '') + '</span>'
            + '<button data-e="' + e.replace(/"/g, '&quot;') + '" onclick="XKDGDigestSetup._del(this.dataset.e)" style="border:1px solid #e57373;background:#fff;color:#c62828;border-radius:6px;cursor:pointer;">✕</button></div>';
     }).join('') : '<div style="color:#888;">Nobody yet: Build each person once.</div>';
   }
@@ -212,7 +224,7 @@
       var o = build((el('xdg-name').value || '').trim(), (el('xdg-email').value || '').trim(), el('xdg-city').value, el('xdg-lang').value, !el('xdg-fs').checked, !!(el('xdg-aq') && el('xdg-aq').checked));
       if (o.error) { el('xdg-out').value = ''; el('xdg-info').textContent = o.error; return; }
       el('xdg-out').value = JSON.stringify(o);
-      if (o.email && o.email !== 'EMAIL') { var l = lines(); l[o.email] = o; saveLines(l); }
+      if (o.email && o.email !== 'EMAIL') { var l = lines(); if (l[o.email] && l[o.email].heluo_for) { o.heluo_for = l[o.email].heluo_for; el('xdg-out').value = JSON.stringify(o); } l[o.email] = o; saveLines(l); }
       var n = (o.houses || []).reduce(function (s, h) { return s + h.ops.length; }, 0);
       el('xdg-info').textContent = (o.houses || []).length + ' house(s), ' + n + ' placement(s): ' +
         (o.houses || []).map(function (h) { return h.name + ' (' + h.ops.map(function (x) { return x.kind; }).join(', ') + ')'; }).join('; ') +
@@ -243,6 +255,16 @@
       } catch (e) { msg.textContent = '✗ No connection to the server.'; }
     },
     _del: function (e) { var l = lines(); delete l[e]; saveLines(l); },
+    // the second reader of a line: stored inside that line, so «Copy the WHOLE secret» carries it
+    _hfAdd: function () {
+      var msg = el('xdg-hf-msg'), m = (el('xdg-hf-mail').value || '').trim().toLowerCase(), nm = (el('xdg-hf-name').value || '').trim(),
+          d = el('xdg-hf-date').value, t = el('xdg-hf-time').value, g = el('xdg-hf-sex').value;
+      if (!m || !d || !t) { msg.textContent = 'Email, date and time of birth are needed.'; return; }
+      var l = lines(), k = Object.keys(l).filter(function (e) { return String(e).toLowerCase().split(/[;,]/).map(function (x) { return x.trim(); }).indexOf(m) > 0; })[0];
+      if (!k) { msg.textContent = 'No line has this address as a second address. Build the person with both addresses first (first yours, then theirs, with a comma).'; return; }
+      l[k].heluo_for = l[k].heluo_for || {}; l[k].heluo_for[m] = { name: nm, birth_date: d, birth_time: t.slice(0, 5), gender: g };
+      saveLines(l); msg.textContent = '✓ Added to the line of ' + l[k].name + '. Now «Copy the WHOLE secret» and paste it in GitHub.';
+    },
     _copyAll: function () {
       var l = lines(), arr = Object.keys(l).map(function (k) { return l[k]; });
       if (!arr.length) { el('xdg-info').textContent = 'Build each person first.'; return; }
