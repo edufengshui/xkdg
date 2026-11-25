@@ -141,7 +141,9 @@ if (HL) {
       const yy = n => { try { return NJ[n].lines.map(l => !!l.yang); } catch (e) { return null; } };
       const nameOf = n => { try { return short((w.XKDG_HELUO_TEXTS[n] || {}).title); } catch (e) { return ''; } };
       const ln = o => o ? { n: o.hexagram, name: nameOf(o.hexagram), l: o.line, b: o.branch, rel: o.relation, who: o.who || '', text: o.text || '',
-        s: o.text_score, timely: /^strong/.test(o.season || '') } : null;
+        s: o.text_score, timely: /^strong/.test(o.season || ''), up: (NJ[o.hexagram] || {}).upper || '', lo: (NJ[o.hexagram] || {}).lower || '' } : null;
+      // the three Luck from the year (Heaven, Earth, Fame) and their opposites, as the chart of the app gives them
+      let luck = null; try { const K = w.XKDGHeluo.chartA().R.luck; luck = { heaven: K.heaven, earth: K.earth, fame: K.fame, opposite: K.opposite || {} }; } catch (e) {}
       const HS = G('HOUR_STARTS'), ST = w.XKDGSolarTime, [y, m, dd] = P.start.split('-').map(Number);
       const f2 = t => String(t.h).padStart(2, '0') + ':' + String(t.mi).padStart(2, '0');
       const win = br => { try { const i = '子丑寅卯辰巳午未申酉戌亥'.indexOf(br); if (i < 0) return '';
@@ -149,7 +151,7 @@ if (HL) {
       const bz = {}; (r.bazi_of_the_day_column_order || []).forEach(x => { const p = String(x).split(' '); bz[p[0].toLowerCase()] = p[1]; });
       const hrs = (r.hours || []).filter(h => h.role || /\(best/.test(h.relieves_prevalence || '')).map(h => ({ pillar: h.pillar, window: win(String(h.pillar).charAt(1)),
         n: h.hexagram, l: h.line, b: h.branch, rel: h.relation, s: h.text_score, text: h.text || '', role: h.role || '', relief: h.relieves_prevalence || '' }));
-      out.heluo = { date: P.start, bazi: bz, age: r.age_heluo, phase: (r.cycle || {}).phase || '',
+      out.heluo = { date: P.start, bazi: bz, luck: luck, age: r.age_heluo, phase: (r.cycle || {}).phase || '',
         cycle: ln(sc.cycle), annual: ln(sc.annual), annual_month: ln(bd.annual_line_of_the_month), month: ln(bd.month_line),
         actor: ln(F.actor), action: ln(ac.day_line), outcome: ln(ac.outcome),
         block_yy: F.actor ? yy(F.actor.hexagram) : null, day_yy: ac.outcome ? yy(ac.outcome.hexagram) : null,

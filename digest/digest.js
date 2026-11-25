@@ -142,6 +142,24 @@ function heluoBlock(hl, t) {
   const rowX = (lbl, o) => '  ' + lbl + ': ' + id(o) + ' · ' + o.rel + (o.who ? ' (' + o.who + ')' : '') + ' · ' + fav(o) + (o.timely ? ' · timely' : '') + '\n    «' + o.text + '»\n';
   const bg = [['Cycle', hl.cycle], ['Year', hl.annual], ['Year, line of the month', hl.annual_month], ['Month', hl.month]].filter(z => z[1]);
   const notes = [].concat(hl.prevalence.map(p => 'Prevalence: ' + p), hl.year_clash, hl.day_clash, hl.notes, hl.legacy ? [hl.legacy] : [], hl.levels);
+  // The three Luck in the hexagrams of today (Edu 25/11/2026: «Li è il mio Fame, non c'è scritto»): where each Luck
+  // trigram, or its opposite, stands, and which active line sits inside it. Only where they are; no score.
+  const LK = hl.luck, lkRows = [];
+  if (LK) {
+    const nm = {}; [['heaven', 'Heaven'], ['earth', 'Earth'], ['fame', 'Fame']].forEach(k => { if (LK[k[0]]) (nm[LK[k[0]]] = nm[LK[k[0]]] || []).push(k[1] + ' Luck'); });
+    [['heaven', 'Heaven'], ['earth', 'Earth'], ['fame', 'Fame']].forEach(k => { const o = (LK.opposite || {})[k[0]]; if (o) (nm[o] = nm[o] || []).push('opposite of ' + k[1]); });
+    const lv = [['Cycle', [['line of the cycle', hl.cycle]]], ['Year', [['moved line', hl.annual], ['line of the month', hl.annual_month]]], ['Month', [['month line', hl.month]]],
+      ['Block', [['Actor', hl.actor], ['Action', hl.action]]], ['Day', [['Outcome', hl.outcome]]]];
+    lv.forEach(L => {
+      const ls = L[1].filter(z => z[1]); if (!ls.length) return; const hx = ls[0][1];
+      [['upper', hx.up], ['lower', hx.lo]].forEach(pos => {
+        if (!pos[1] || !nm[pos[1]]) return;
+        const inside = ls.filter(z => (z[1].l <= 3 ? 'lower' : 'upper') === pos[0]).map(z => z[0] + ' (line ' + z[1].l + ' ' + z[1].b + ' ' + z[1].rel + ')');
+        lkRows.push({ good: nm[pos[1]].some(q => /Luck$/.test(q)), txt: L[0] + ' ' + hx.n + ' ' + hx.name + ': ' + pos[1] + ' ' + pos[0] + ' = ' + nm[pos[1]].join(', ') + (inside.length ? ' — inside it: ' + inside.join(', ') : '') });
+      });
+    });
+  }
+  const lkHead = LK ? 'Heaven ' + LK.heaven + ' · Earth ' + LK.earth + ' · Fame ' + LK.fame : '';
   const col = (lbl, gz) => '<td style="text-align:center;padding:0 8px 0 0;font-size:11px;color:#777;">' + lbl + '<div style="font-size:16px;color:#222;line-height:1.25;">' + (gz ? esc(gz.charAt(0)) + '<br>' + esc(gz.charAt(1)) : '·<br>·') + '</div></td>';
   const mB = {}; mB[hl.actor.l] = '#6a1b9a'; mB[hl.action.l] = '#c62828'; const mD = {}; mD[hl.outcome.l] = '#c62828';
   let h = '<div style="background:#f7f3ff;border:1px solid #b39ddb;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:13px;">' +
@@ -155,6 +173,12 @@ function heluoBlock(hl, t) {
     '  Block ' + hl.actor.n + ' ' + hl.actor.name + '\n' + hlTxt(hl.block_yy, (function () { const m = {}; m[hl.actor.l] = 'actor'; m[hl.action.l] = (m[hl.action.l] ? m[hl.action.l] + ', ' : '') + 'action'; return m; })()) +
     '  Day ' + hl.outcome.n + ' ' + hl.outcome.name + '\n' + hlTxt(hl.day_yy, (function () { const m = {}; m[hl.outcome.l] = 'outcome'; return m; })()) +
     rowX('Actor', hl.actor) + rowX('Action', hl.action) + rowX('Outcome', hl.outcome);
+  if (LK) {
+    h += '<div style="margin-top:9px;"><b style="color:#4527a0;">Luck</b> <span style="color:#666;">' + esc(lkHead) + '</span>' +
+      (lkRows.length ? lkRows.map(r => '<div style="margin-top:3px;color:' + (r.good ? '#2e7d32' : '#c62828') + ';">' + (r.good ? '☘ ' : '✖ ') + esc(r.txt) + '</div>').join('')
+        : '<div style="margin-top:3px;color:#999;">no Luck trigram in the hexagrams of today</div>') + '</div>';
+    x += '  Luck: ' + lkHead + '\n' + (lkRows.length ? lkRows.map(r => '    ' + (r.good ? '+ ' : '- ') + r.txt).join('\n') : '    no Luck trigram in the hexagrams of today') + '\n';
+  }
   if (hl.hours && hl.hours.length) {
     h += '<div style="margin-top:9px;"><b style="color:#4527a0;">Hours</b>' + hl.hours.map(o => '<div style="margin-top:3px;"><b style="white-space:nowrap;">' + esc(o.window) + ' ' + esc(o.pillar) + '</b> · ' +
       esc([o.role, o.relief].filter(Boolean).join(' · ')) + '<br><span style="color:#555;">' + o.n + ' line ' + o.l + ' ' + esc(o.b) + ' ' + esc(o.rel) + ' · <i>«' + esc(o.text) + '»</i></span></div>').join('') + '</div>';
