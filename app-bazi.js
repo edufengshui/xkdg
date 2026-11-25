@@ -6336,11 +6336,9 @@ function onPurposeChange() {
 var XK_VARIANTS = { speak: [['show', 'Show / new product · Children'], ['convince', 'Convince (teacher, politician) · Ghost + Parent'], ['reassure', 'Reassure (insurance, real estate) · Parent']],
     legal: [['defend', 'Defend (we are attacked) · Parent'], ['act', 'Act (we start the case) · Ghost + Wealth']],
     // Luck · $ (Edu 22/11/2026): windfall — the period switch, then Wealth on month, block and day (heluo-ds.js moneyMeter)
-    luck: [['', '🍀 The three Luck'], ['money', '$ Windfall · ticket, prize'], ['money2', '$$ Windfall · day stem ×2 + Ke of the hour'],
-        // ★ Fame (Edu 24/11/2026): the year switch (moved line of the annual in the Fame Luck trigram), then the day line (heluo-ds.js fameMeter)
-        ['fame', '★ Fame · election, prize, recognition']],
-    // Wealth · Sell (Edu 24/11/2026): the days as for Wealth, plus the switch of year and period (heluo-ds.js sellMeter)
-    wealth: [['', '💰 Wealth'], ['sell', 'Sell · a sale, a contract']] };
+    // Edu 25/11/2026: the experimental He Luo selections (Luck · $, $$, ★ Fame; Wealth · Sell) are no longer here: they live only
+    // in the Date Selection tab of the He Luo window (heluo-ds.js EXP_PURP), with its «＋ XKDG» button.
+    };
 function xkdgSyncPurposeVariant() {
     var el = document.getElementById('purpose-variant'), p = (document.getElementById('purpose-select') || {}).value || '';
     if (!el) return;

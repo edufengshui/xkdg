@@ -428,7 +428,10 @@
   var XK_FALL = { relationship: { M: [['W', 1], ['P', 0.5]], F: [['G', 1], ['P', 0.5]] }, speak: { convince: [['G', 1], ['P', 1]], show: [['C', 1]], reassure: [['P', 1]] }, legal: { defend: [['P', 1]], act: [['G', 1], ['W', 0.5]] } };
   var XK_VDEF = { speak: 'show', legal: 'defend' };
   var _xkForce = null; // [purpose, variant] while the Date Selection tab of the He Luo window scans an experimental purpose (expScan)
-  function xkVar(key) { if (_xkForce && _xkForce[0] === key) return _xkForce[1]; var v = ''; try { v = localStorage.getItem('xkdg_xk_variant_' + key) || ''; } catch (e) {} return v; }
+  // Edu 25/11/2026: Sell, ★ Fame, $ and $$ live ONLY in the Date Selection tab of the He Luo window (no menu next to PURPOSE);
+  // a value left in localStorage from the days when they were next to PURPOSE (22–24/11) is ignored.
+  var XK_EXPERIMENTAL = /^(money2?|fame|sell)$/;
+  function xkVar(key) { if (_xkForce && _xkForce[0] === key) return _xkForce[1]; var v = ''; try { v = localStorage.getItem('xkdg_xk_variant_' + key) || ''; } catch (e) {} return XK_EXPERIMENTAL.test(v) ? '' : v; }
   function xkRels(key, male) {
     var S = (root.XKDG_HELUO_READINGS || {}).spheres, E = S && S.resolve && S.table[key] && !S.table[key].reading ? S.resolve(key, male, xkVar(key)) : null;
     if (E) return E.score;
@@ -1155,6 +1158,44 @@
   // id → [purpose of thread(), variant, label]
   var EXP_PURP = { sell: ['wealth', 'sell', 'Sell · a sale, a contract (experimental)'], fame: ['luck', 'fame', '★ Fame · election, prize, recognition (experimental)'],
     money: ['luck', 'money', '$ Windfall · ticket, prize (experimental)'], money2: ['luck', 'money2', '$$ Windfall · day stem ×2 (experimental)'] };
+  // «＋ XKDG» (Edu 25/11/2026: «una date selection solo HLLS ma che abbia un pulsante che aggiunge il XKDG solito già
+  // implementato nel resto del software»). Off: the He Luo days alone. On: the usual XKDG Date Selection (app-bazi.js
+  // runScanner, with Person A, place, FILTER and Feng Shui settings as they are in the main panel) is run on the same range
+  // with the matching XKDG purpose; each He Luo day then shows its favourable XKDG hours, and the list of the best keeps
+  // only the days that have one. He Luo ranks the days, XKDG gives the hours. The main panel is left on that range and purpose.
+  var XK_OF = { wealth: 'wealth', sell: 'wealth', output: 'speak', parent: 'legal', officer: 'career', fame: 'luck', money: 'luck', money2: 'luck' };
+  function xkdgRun(fromIso, n, id) {
+    var st = $('scan-start'), sd = $('scan-days'), ps = $('purpose-select'), pu = XK_OF[id] || '';
+    if (typeof root.runScanner !== 'function' || !st || !sd) return { err: 'the XKDG Date Selection is not available here' };
+    try {
+      st.value = fromIso; sd.value = n;
+      if (ps && ps.value !== pu) { ps.value = pu; if (typeof root.onPurposeChange === 'function') root.onPurposeChange(); }
+      root.runScanner();
+    } catch (e) { return { err: 'the XKDG scan failed: ' + (e && e.message) }; }
+    if (root._scanError) return { err: String(root._scanError) };
+    var time = {}, ke = {}, by = {}, lab = (ps && ps.selectedIndex >= 0 && ps.options[ps.selectedIndex]) ? ps.options[ps.selectedIndex].text : pu;
+    try { if (typeof _scanResults !== 'undefined') _scanResults.forEach(function (r) { ke[r.isoDate + '|' + r.hourIndex] = [r.keScore || 0, r.hour || '']; }); } catch (e) {}
+    (root._lastScanResults || []).forEach(function (r) {
+      if (!(r.score > 0) || r.hourIndex == null) return; var k = r.isoDate + '|' + r.hourIndex, x = ke[k] || [0, ''];
+      (by[r.isoDate] = by[r.isoDate] || []).push({ h: r.hourIndex, lab: x[1], time: r.time, score: Math.round(r.score * 10) / 10, ke: x[0] });
+    });
+    Object.keys(by).forEach(function (d) { by[d].sort(function (a, b) { return b.score - a.score || b.ke - a.ke || a.h - b.h; }); });
+    return { by: by, purpose: lab, applied: ps ? ps.value === pu : true };
+  }
+  function xkRows(dateMs) { var X = _st.res && _st.res.xk; return X && X.by ? (X.by[isoDay(dateMs)] || []) : null; }
+  function xkLine(dateMs) {
+    var a = xkRows(dateMs); if (a === null) return '';
+    if (!a.length) return '<div style="font-size:11px;color:#999;">XKDG: no favourable hour</div>';
+    return '<div style="font-size:11px;color:#1565c0;">XKDG: ' + a.slice(0, 3).map(function (x) { return esc(x.lab) + ' ' + x.time + ' <b>' + x.score + '</b>' + (x.ke ? ' <span style="color:#b8860b;">Ke+' + x.ke + '</span>' : ''); }).join(' · ') + (a.length > 3 ? ' · +' + (a.length - 3) + ' more' : '') + '</div>';
+  }
+  // the 15 best He Luo days; with ＋ XKDG only those that have a favourable XKDG hour
+  function xkBest(sorted) { var X = _st.res && _st.res.xk; return (X && X.by ? sorted.filter(function (g) { return (X.by[isoDay(g.date)] || []).length; }) : sorted).slice(0, 15); }
+  function xkHead(n, days) {
+    var X = _st.res && _st.res.xk; if (!X) return '';
+    if (X.err) return '<div style="font-size:11px;color:#c62828;margin:2px 0;">＋ XKDG: ' + esc(X.err) + '. He Luo days only.</div>';
+    var m = days.filter(function (g) { return (X.by[isoDay(g.date)] || []).length; }).length;
+    return '<div style="font-size:11px;color:#1565c0;margin:2px 0;">＋ XKDG · purpose ' + esc(X.purpose) + (X.applied ? '' : ' (not accepted by the main panel: Person A missing?)') + ' · ' + m + ' of ' + n + ' days have a favourable XKDG hour. Hours in clock time, with the XKDG score.</div>';
+  }
   function expScan(ctx, fromMs, toMs, lon, id) {
     var E = EXP_PURP[id], out = [], D = 86400000, prev = _xkForce;
     _xkForce = [E[0], E[1]];
@@ -1191,19 +1232,19 @@
   function expResults(chart, r) {
     var E = EXP_PURP[r.id], n = r.days.length;
     if (!n) return '<div style="font-size:12px;color:#888;">No day inside the Xian Tian / Hou Tian cycles.</div>';
-    var list = _st.all ? r.days : r.sorted.slice(0, 15);
-    var h = '<div style="font-size:12px;color:#333;margin:4px 0;">' + (_st.all ? 'All ' + n + ' days in date order' : 'Best 15 of ' + n + ' days') + ' · <b>' + esc(E[2]) + '</b> · '
-      + '<a href="javascript:void 0" onclick="xkdgHLDSAll()" style="color:#5e35b1;">' + (_st.all ? 'show the best' : 'show all days') + '</a></div>';
+    var list = _st.all ? r.days : xkBest(r.sorted);
+    var h = '<div style="font-size:12px;color:#333;margin:4px 0;">' + (_st.all ? 'All ' + n + ' days in date order' : 'Best ' + list.length + ' of ' + n + ' days') + ' · <b>' + esc(E[2]) + '</b> · '
+      + '<a href="javascript:void 0" onclick="xkdgHLDSAll()" style="color:#5e35b1;">' + (_st.all ? 'show the best' : 'show all days') + '</a></div>' + xkHead(n, r.days);
     list.forEach(function (g) {
       var on = _st.open === g.date;
       h += '<div onclick="xkdgHLDSOpen(' + g.date + ')" style="cursor:pointer;border-top:1px solid #eee;padding:5px 4px;' + (on ? 'background:#ede7f6;' : '') + '">'
         + '<b>' + fmtDate(g.date) + '</b> <span style="font-size:10px;color:#999;">' + g.Pe.day + ' day · ' + g.Pe.month + ' month</span> · <b style="color:' + (g.adj > 0 ? '#2e7d32' : g.adj < 0 ? '#c62828' : '#777') + ';">☯ ' + sgn(g.adj) + '</b>'
-        + '<div style="font-size:11px;color:#444;">' + esc(g.sum) + '</div></div>';
+        + '<div style="font-size:11px;color:#444;">' + esc(g.sum) + '</div>' + xkLine(g.date) + '</div>';
       if (on) h += '<div style="padding:2px 4px 10px;">' + expDetail(g) + '</div>';
     });
-    return h + '<div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Experimental (Edu, 24/11/2026). Every day of the range, He Luo only: no XKDG filter of favourable dates and no hour. ☯ = the points this reading would add to the XKDG score (5% each). Tendencies seen on a few dozen cases, not rules.</div>';
+    return h + '<div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Experimental (Edu, 24–25/11/2026). Every day of the range, He Luo only; «＋ XKDG» adds the favourable hours of the usual XKDG Date Selection. ☯ = the points this reading would add to the XKDG score (5% each). Tendencies seen on a few dozen cases, not rules.</div>';
   }
-  var _st = { mode: 'score', purpose: 'wealth', from: null, to: null, place: 'gps', res: null, open: null };
+  var _st = { mode: 'score', purpose: 'wealth', from: null, to: null, place: 'gps', res: null, open: null, xk: false };
   // pre-fill from the XKDG Date Selection (heluo-lishu.js openHeluoLishuFor) and run at the next render
   root.xkdgHLDSPreset = function (o) {
     if (o.purpose && (PURPOSES[o.purpose] || EXP_PURP[o.purpose])) _st.purpose = o.purpose;
@@ -1228,14 +1269,15 @@
       + '<div><label style="' + Lb + '">From</label><input id="hlds-from" type="date" value="' + _st.from + '" style="' + F + '"></div>'
       + '<div><label style="' + Lb + '">To (max 1 year)</label><input id="hlds-to" type="date" value="' + _st.to + '" style="' + F + '"></div>'
       + '<div><label style="' + Lb + '">Place</label><select id="hlds-pl" style="' + F + '"><option value="gps"' + (_st.place === 'gps' ? ' selected' : '') + '>Current GPS</option><option value="birth"' + (_st.place === 'birth' ? ' selected' : '') + '>Birth place</option></select></div>'
-      + '<button onclick="xkdgHLDSRun()" style="padding:6px 14px;border:none;border-radius:6px;background:#5e35b1;color:#fff;font-size:13px;cursor:pointer;">Find days</button></div>'
+      + '<button onclick="xkdgHLDSRun()" style="padding:6px 14px;border:none;border-radius:6px;background:#5e35b1;color:#fff;font-size:13px;cursor:pointer;">Find days</button>'
+      + '<button id="hlds-xk" onclick="xkdgHLDSXk()" title="Add the usual XKDG Date Selection: favourable hours of each He Luo day (score mode)" style="padding:6px 12px;border:1px solid #1565c0;border-radius:6px;font-size:13px;cursor:pointer;' + (_st.xk ? 'background:#1565c0;color:#fff;' : 'background:#fff;color:#1565c0;') + '">' + (_st.xk ? '✓ XKDG added' : '＋ XKDG') + '</button></div>'
       + '<div id="hlds-info" style="font-size:11px;color:#666;margin-bottom:6px;">' + esc(chart.c.name) + ' · ' + (chart.male ? 'man' : 'woman') + (pl ? ' · days in true solar time at ' + pl.lbl + ' (longitude ' + Math.round(pl.lon * 100) / 100 + '°)' : ' · <span style="color:#c0392b;">no longitude: set the GPS</span>') + '</div>'
       + '<div id="hlds-res"></div>';
     box.innerHTML = h;
     if (_st.autorun && pl) { _st.autorun = false; setTimeout(function () { root.xkdgHLDSRun(); }, 0); return; }
     if (_st.res && _st.res.key === key(chart)) results(chart);
   }
-  function key(chart) { return chart.c.name + '|' + chart.c.date + '|' + chart.c.time + '|' + chart.male + '|' + _st.mode + '|' + _st.purpose + '|' + _st.from + '|' + _st.to + '|' + _st.place; }
+  function key(chart) { return chart.c.name + '|' + chart.c.date + '|' + chart.c.time + '|' + chart.male + '|' + _st.mode + '|' + _st.purpose + '|' + _st.from + '|' + _st.to + '|' + _st.place + '|' + (_st.xk ? 'x' : ''); }
   root.xkdgHLDSRun = function () {
     var chart = H().currentChart && H().currentChart(); if (!chart || !chart.R) return;
     _st.mode = $('hlds-mo') ? $('hlds-mo').value : 'score'; _st.purpose = $('hlds-pu').value; _st.from = $('hlds-from').value; _st.to = $('hlds-to').value; _st.place = $('hlds-pl').value; _st.open = null;
@@ -1248,9 +1290,15 @@
     setTimeout(function () {
       try {
         var ctx = context(chart.R, chart.Pn, chart.male), r = _st.mode === 'score' ? (EXP_PURP[_st.purpose] ? { exp: expScan(ctx, a, b, pl.lon, _st.purpose) } : scan(ctx, a, b, pl.lon, _st.purpose)) : { cf: cfScan(ctx, a, b, pl.lon, _st.mode) };
-        _st.res = { key: key(chart), r: r, lon: pl.lon }; results(chart);
+        _st.res = { key: key(chart), r: r, lon: pl.lon, xk: _st.xk && _st.mode === 'score' ? xkdgRun(_st.from, Math.round((b - a) / 86400000) + 1, _st.purpose) : null }; results(chart);
       } catch (e) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">Calculation failed: ' + esc(e && e.message) + '</div>'; }
     }, 20);
+  };
+  // ＋ XKDG on / off: redo the search with the fields as they are
+  root.xkdgHLDSXk = function () {
+    _st.xk = !_st.xk; var b = $('hlds-xk');
+    if (b) { b.style.background = _st.xk ? '#1565c0' : '#fff'; b.style.color = _st.xk ? '#fff' : '#1565c0'; b.textContent = _st.xk ? '✓ XKDG added' : '＋ XKDG'; }
+    if (_st.res || _st.xk) root.xkdgHLDSRun();
   };
   root.xkdgHLDSOpen = function (t) { _st.open = _st.open === t ? null : t; var chart = H().currentChart(); if (chart) results(chart); };
   root.xkdgHLDSAll = function () { _st.all = !_st.all; var chart = H().currentChart(); if (chart) results(chart); };
@@ -1259,9 +1307,9 @@
     if (r.cf) { out.innerHTML = cfResults(chart, r.cf); return; }
     if (r.exp) { out.innerHTML = expResults(chart, r.exp); return; }
     if (!r.days.length) { out.innerHTML = '<div style="font-size:12px;color:#888;">No day inside the Xian Tian / Hou Tian cycles.</div>'; return; }
-    var list = _st.all ? r.days : r.sorted.slice(0, 15), TD = 'padding:4px 5px;', n = r.days.length;
-    var h = '<div style="font-size:12px;color:#333;margin:4px 0;">' + (_st.all ? 'All ' + n + ' days in date order' : 'Best 15 of ' + n + ' days') + ' · purpose <b>' + _st.purpose + '</b> · '
-      + '<a href="javascript:void 0" onclick="xkdgHLDSAll()" style="color:#5e35b1;">' + (_st.all ? 'show the best' : 'show all days') + '</a></div>'
+    var list = _st.all ? r.days : xkBest(r.sorted), TD = 'padding:4px 5px;', n = r.days.length;
+    var h = '<div style="font-size:12px;color:#333;margin:4px 0;">' + (_st.all ? 'All ' + n + ' days in date order' : 'Best ' + list.length + ' of ' + n + ' days') + ' · purpose <b>' + _st.purpose + '</b> · '
+      + '<a href="javascript:void 0" onclick="xkdgHLDSAll()" style="color:#5e35b1;">' + (_st.all ? 'show the best' : 'show all days') + '</a></div>' + xkHead(n, r.days)
       + '<table style="border-collapse:collapse;font-size:12px;width:100%;"><tr style="color:#777;text-align:left;"><th style="' + TD + '">Day</th><th style="' + TD + '">Score</th><th style="' + TD + '">Day · month · annual · cycle line</th></tr>';
     list.forEach(function (g) {
       var on = _st.open === g.date, pct = Math.max(1, Math.round(100 * g.rank / g.n));
@@ -1270,7 +1318,7 @@
         + '<td style="' + TD + '"><b>' + sgn(g.tot) + '</b><div style="font-size:10px;color:#999;">top ' + pct + '%</div></td>'
         + '<td style="' + TD + 'font-size:11px;line-height:1.5;">' + g.d.hexN + ' l' + g.d.line + ' ' + g.d.b + ' ' + relTag(g.d.r) + ' ' + sgn(g.d.tot)
         + ' · ' + g.m.b + ' ' + relTag(g.m.r) + ' ' + sgn(g.m.tot) + ' · ' + g.a.b + ' ' + relTag(g.a.r) + ' ' + sgn(g.a.tot) + ' · ' + g.c.b + ' ' + relTag(g.c.r) + ' ' + sgn(g.c.tot)
-        + '<br>Luck ' + sgn(g.L.tot) + (g.warn.length ? ' <span style="color:#c62828;">⚠ ' + esc(g.warn.join('; ')) + '</span>' : '') + '</td></tr>';
+        + '<br>Luck ' + sgn(g.L.tot) + (g.warn.length ? ' <span style="color:#c62828;">⚠ ' + esc(g.warn.join('; ')) + '</span>' : '') + xkLine(g.date) + '</td></tr>';
       if (on) h += '<tr><td colspan="3" style="padding:4px 4px 10px;">' + detail(chart, g) + '</td></tr>';
     });
     out.innerHTML = h + '</table><div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Score = cycle line + moved line of the annual + line of the month in the monthly hexagram + day line in the block hexagram (primary) + half of the same line in the day hexagram (secondary) (relation for the purpose, time of the branch against year, month and day, line text) + the three Luck. '
