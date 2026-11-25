@@ -33,10 +33,19 @@ w.console.error = () => {}; w.console.warn = () => {}; w.console.log = () => {};
 // Every LOCAL script of index.html, in its order (CDN ones and sync/version helpers skipped),
 // so the assistant's tools (aquarium activation) run with all their engines.
 const SKIP = { 'gdrive-sync.js': 1, 'version.js': 1, 'register-sw.js': 1, 'index.js': 1 };
+// He Luo of the day (Edu 25/11/2026): only when digest.js asks for it (P.heluo = 'M' | 'F', the owner's line).
+// The He Luo is closed to the students in the app (xkdgHeluoAllowed): here it is opened for this process only,
+// and the person "X" gets the gender the chart needs. Nothing changes for the other recipients.
+const HL = (P.heluo === 'M' || P.heluo === 'F') ? P.heluo : null;
+const inject = src => { const s = d.createElement('script'); s.textContent = fs.readFileSync(path.join(ROOT, src), 'utf8'); d.body.appendChild(s); };
+if (HL) { try { w.localStorage.setItem('xkdg_person_gender', JSON.stringify({ X: HL })); } catch (e) {} }
 fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(/<script src="([^"]+)"/g, (m, src) => {
   if (/^https?:/.test(src) || SKIP[src] || !fs.existsSync(path.join(ROOT, src))) return m;
-  const s = d.createElement('script'); s.textContent = fs.readFileSync(path.join(ROOT, src), 'utf8'); d.body.appendChild(s); return m;
+  if (HL && src === 'heluo-lishu.js') { const s0 = d.createElement('script'); s0.textContent = 'window.xkdgHeluoAllowed = function () { return true; };'; d.body.appendChild(s0); }
+  inject(src); return m;
 });
+// the files the app loads on demand when the He Luo window opens
+if (HL) ['heluo-najia.js', 'heluo-texts.js', 'heluo-texts-age.js', 'heluo-scores.js', 'heluo-readings.js', 'heluo-natal.js', 'heluo-ds.js'].forEach(f => { try { if (fs.existsSync(path.join(ROOT, f))) inject(f); } catch (e) {} });
 w.onload = null;
 const G = code => { const s = d.createElement('script'); s.textContent = 'window.__r=(function(){return (' + code + ');})();'; d.body.appendChild(s); return w.__r; };
 const $ = id => d.getElementById(id);
@@ -114,6 +123,44 @@ for (let i = 0; i < (P.skip_hours ? 0 : P.days); i++) {
   try { const [yy, mm, d2] = day.split('-').map(Number); const pn = ST.pillarsFromCivil(yy, mm, d2, 12, 0, 0, P.lon, tzMin); dayGz = pn ? pn.day : ''; } catch (e) {}
   out.days.push({ date: day, dst: dst, day_gz: dayGz, hours: list });
 }
+// ── He Luo Li Shu of the first day (Edu 25/11/2026): the app's own reading of the day (XKDGHeluoDS.aiDay, the
+// same facts the Assistant gets): actor, action, outcome with their line texts, the background (cycle, year,
+// month), the notes of the day and the hours that matter, in clock time. No score is invented here.
+if (HL) {
+  try {
+    const dstH = tzOffsetMin(P.tz, new Date(P.start + 'T12:00:00Z')) > stdOff, tzMinH = -(stdOff + (dstH ? 60 : 0));
+    G('(_dstOn=' + (dstH ? 'true' : 'false') + ')');
+    $('longitude').value = String(P.lon); $('date').value = P.start; $('time') && ($('time').value = '12:00');
+    try { w.calculateBazi(); } catch (e) {}
+    try { w.calculatePerson('A'); } catch (e) {}
+    const r = w.XKDGHeluoDS && w.XKDGHeluoDS.aiDay ? w.XKDGHeluoDS.aiDay(P.start, null, true) : { error: 'He Luo not loaded' };
+    if (!r || r.error) out.heluo_error = (r && r.error) || 'no reading';
+    else {
+      const NJ = w.HeluoNaJia || {}, F = r.film || {}, sc = F.scenario || {}, bd = F.backdrop || {}, ac = F.action || {};
+      const short = nm => String(nm || '').split(' – ')[0].split(' - ')[0].trim();
+      const yy = n => { try { return NJ[n].lines.map(l => !!l.yang); } catch (e) { return null; } };
+      const nameOf = n => { try { return short((w.XKDG_HELUO_TEXTS[n] || {}).title); } catch (e) { return ''; } };
+      const ln = o => o ? { n: o.hexagram, name: nameOf(o.hexagram), l: o.line, b: o.branch, rel: o.relation, who: o.who || '', text: o.text || '',
+        s: o.text_score, timely: /^strong/.test(o.season || '') } : null;
+      const HS = G('HOUR_STARTS'), ST = w.XKDGSolarTime, [y, m, dd] = P.start.split('-').map(Number);
+      const f2 = t => String(t.h).padStart(2, '0') + ':' + String(t.mi).padStart(2, '0');
+      const win = br => { try { const i = '子丑寅卯辰巳午未申酉戌亥'.indexOf(br); if (i < 0) return '';
+        return f2(ST.wallClockFromTST(y, m, dd, HS[i], 0, P.lon, tzMinH)) + '–' + f2(ST.wallClockFromTST(y, m, dd, HS[i] + 2, 0, P.lon, tzMinH)); } catch (e) { return ''; } };
+      const bz = {}; (r.bazi_of_the_day_column_order || []).forEach(x => { const p = String(x).split(' '); bz[p[0].toLowerCase()] = p[1]; });
+      const hrs = (r.hours || []).filter(h => h.role || /\(best/.test(h.relieves_prevalence || '')).map(h => ({ pillar: h.pillar, window: win(String(h.pillar).charAt(1)),
+        n: h.hexagram, l: h.line, b: h.branch, rel: h.relation, s: h.text_score, text: h.text || '', role: h.role || '', relief: h.relieves_prevalence || '' }));
+      out.heluo = { date: P.start, bazi: bz, age: r.age_heluo, phase: (r.cycle || {}).phase || '',
+        cycle: ln(sc.cycle), annual: ln(sc.annual), annual_month: ln(bd.annual_line_of_the_month), month: ln(bd.month_line),
+        actor: ln(F.actor), action: ln(ac.day_line), outcome: ln(ac.outcome),
+        block_yy: F.actor ? yy(F.actor.hexagram) : null, day_yy: ac.outcome ? yy(ac.outcome.hexagram) : null,
+        prevalence: (r.prevalence || []).filter(x => x !== 'none'), levels: r.relations_between_levels || [],
+        year_clash: sc.year_clash || [], day_clash: ac.day_clash || [], notes: r.notes_of_the_day || [],
+        legacy: r.legacy_or_document || '', hours: hrs,
+        correct: r.correct && r.correct.how ? r.correct : null,
+        alarms: Array.isArray(r.alarms_next_30_days) ? r.alarms_next_30_days : [] };
+    }
+  } catch (e) { out.heluo_error = String(e && e.message || e); }
+}
 // ── Feng Shui placements of the person's houses: the app's own DAY scans ──
 // water = fsFindMatchingDatesForSetup (door facing ZS + water LS, Person A),
 // bed = _fsScanLuckyDates(owner + guest #2), desk = _fsScanLuckyDates(person).
@@ -122,7 +169,7 @@ for (let i = 0; i < (P.skip_hours ? 0 : P.days); i++) {
 // in the same palace. Uses the app's own qmdj-daymonth.js. No personal data.
 try {
   const DM = w.XKDGDayMonth, QW = w.QMDJWaterScanner;
-  if (DM && QW) {
+  if (DM && QW && !P.heluo_only) {
     const dst0 = tzOffsetMin(P.tz, new Date(P.start + 'T12:00:00Z')) > stdOff;
     G('(_dstOn=' + (dst0 ? 'true' : 'false') + ')');
     const [y0, m0, d0] = P.start.split('-').map(Number);

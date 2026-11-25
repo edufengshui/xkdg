@@ -30,6 +30,7 @@ const T = {
 const ICON = { health: '🩺', career: '🏆', wealth: '💰', relationship: '❤️', journey: '✈️', speak: '🗣️', legal: '⚖️' };
 const FSICON = { fountain: '\u26F2', aquarium: '\uD83D\uDC20', water: '\uD83D\uDCA7', bed: '\uD83D\uDECF\uFE0F', desk: '\uD83E\uDE91' };
 const PORDER = ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'];
+const HELUO_OWNER_GENDER = 'M';   // the owner of the app (Edu): the He Luo chart needs the gender, the secret line has none
 
 // Two zones are interchangeable when their UTC offsets match all year (Vienna = Rome).
 function tzSig(tz) {
@@ -89,6 +90,97 @@ function qdBlock(q, t) {
   return { h: h, x: x };
 }
 
+// ── Switch ON / OFF of aquariums and fountains (Edu 25/11/2026) ──
+// The REAL times of the plans stored in the Shelly Worker (what the plugs will do), today and tomorrow,
+// in the clock time of each device. Read in aquariumStatus(); nothing is computed here.
+const SW = {
+  it: { title: 'Accensione / spegnimento', today: 'Oggi', tomorrow: 'Domani', none: 'nessuna accensione', on: 'ON', off: 'OFF', since: 'acceso da' },
+  en: { title: 'Switch ON / OFF', today: 'Today', tomorrow: 'Tomorrow', none: 'no switch-on', on: 'ON', off: 'OFF', since: 'on since' },
+  fr: { title: 'Allumage / extinction', today: 'Aujourd’hui', tomorrow: 'Demain', none: 'aucun allumage', on: 'ON', off: 'OFF', since: 'allumé depuis' }
+};
+function switchBlock(aq, rec) {
+  if (!aq || !aq.switches || !aq.switches.length) return { h: '', x: '' };
+  const s = SW[rec.lang] || SW.en;
+  const parts = iv => iv.map(v => (v.onPrev ? s.since + ' ' + v.on : s.on + ' ' + v.on) + ' → ' + s.off + ' ' + v.off);
+  const one = iv => iv.length ? parts(iv).join('  ·  ') : s.none;
+  const oneH = iv => iv.length ? parts(iv).map(esc).join('<br>') : esc(s.none);   // one switch per row on a phone
+  let h = '<div style="background:#e3f2fd;border:1px solid #90caf9;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;">' +
+    '<b style="color:#0d47a1;">🔌 ' + esc(s.title) + '</b>', x = s.title + '\n';
+  [['today', s.today], ['tomorrow', s.tomorrow]].forEach((d, i) => {
+    h += '<div style="margin-top:6px;font-weight:bold;color:' + (i ? '#555' : '#c62828') + ';">' + esc(d[1]) + '</div>' +
+      '<table style="border-collapse:collapse;font-size:13px;width:100%;">' +
+      aq.switches.map(w => '<tr><td style="padding:2px 8px 2px 0;white-space:nowrap;vertical-align:top;">' + w.icon + ' ' + esc(w.name) + '</td>' +
+        '<td style="padding:2px 0;' + (i ? 'color:#555;' : 'font-weight:bold;') + (w[d[0]].length ? '' : 'color:#999;font-weight:normal;') + '">' + oneH(w[d[0]]) + '</td></tr>').join('') + '</table>';
+    x += '  ' + d[1] + '\n' + aq.switches.map(w => '    ' + w.icon + ' ' + w.name + ': ' + one(w[d[0]])).join('\n') + '\n';
+  });
+  return { h: h + '</div>', x: x + '\n' };
+}
+
+// ── He Luo Li Shu of the day (Edu 25/11/2026) — only in the owner's email (see main) ──
+// Facts of the app's own reading (scan.js → XKDGHeluoDS.aiDay): who acts, what is done, how it ends, with the
+// line texts; the background; the notes of the day; the hours that matter. English only, like the He Luo window.
+const HL_RC = { Parent: '#6a1b9a', Wealth: '#2e7d32', Ghost: '#c62828', Children: '#1565c0', Brothers: '#555' };
+function hlHex(yy, marks) {            // drawn hexagram, email-safe: line 6 on top; marks = { line: colour }
+  if (!yy || yy.length !== 6) return '';
+  let h = '<table style="border-collapse:collapse;">';
+  for (let l = 6; l >= 1; l--) {
+    const c = (marks && marks[l]) || '#444', bar = wd => '<td style="padding:2px 0;"><div style="width:' + wd + 'px;height:6px;background:' + c + ';font-size:0;line-height:0;">&nbsp;</div></td>';
+    h += '<tr>' + (yy[l - 1] ? bar(22) + bar(10) + bar(22) : bar(22) + '<td style="padding:2px 0;"><div style="width:10px;height:6px;font-size:0;line-height:0;">&nbsp;</div></td>' + bar(22)) +
+      '<td style="padding:0 0 0 5px;font-size:10px;color:' + c + ';line-height:10px;">' + (marks && marks[l] ? l : '') + '</td></tr>';
+  }
+  return h + '</table>';
+}
+function hlTxt(yy, marks) { if (!yy || yy.length !== 6) return ''; let o = ''; for (let l = 6; l >= 1; l--) o += '    ' + (yy[l - 1] ? '━━━━━' : '━━ ━━') + (marks && marks[l] ? '  ← ' + marks[l] : '') + '\n'; return o; }
+function heluoBlock(hl, t) {
+  if (!hl || !hl.actor || !hl.action || !hl.outcome) return { h: '', x: '' };
+  const fav = o => (o.s > 0 ? 'favourable' : o.s < 0 ? 'unfavourable' : 'neutral');
+  const favC = o => (o.s > 0 ? '#2e7d32' : o.s < 0 ? '#c62828' : '#777');
+  const id = o => o.n + ' ' + o.name + ' line ' + o.l + ' ' + o.b;
+  const row = (lbl, o, what) => '<div style="margin-top:7px;"><b style="color:#4527a0;">' + esc(lbl) + '</b> <span style="color:#888;font-size:11px;">' + esc(what) + '</span><br>' +
+    esc(id(o)) + ' · <b style="color:' + (HL_RC[o.rel] || '#333') + ';">' + esc(o.rel) + '</b>' + (o.who ? ' <span style="color:#666;">(' + esc(o.who) + ')</span>' : '') +
+    ' · <b style="color:' + favC(o) + ';">' + fav(o) + '</b>' + (o.timely ? ' · timely' : '') + '<br><i>«' + esc(o.text) + '»</i></div>';
+  const rowX = (lbl, o) => '  ' + lbl + ': ' + id(o) + ' · ' + o.rel + (o.who ? ' (' + o.who + ')' : '') + ' · ' + fav(o) + (o.timely ? ' · timely' : '') + '\n    «' + o.text + '»\n';
+  const bg = [['Cycle', hl.cycle], ['Year', hl.annual], ['Year, line of the month', hl.annual_month], ['Month', hl.month]].filter(z => z[1]);
+  const notes = [].concat(hl.prevalence.map(p => 'Prevalence: ' + p), hl.year_clash, hl.day_clash, hl.notes, hl.legacy ? [hl.legacy] : [], hl.levels);
+  const col = (lbl, gz) => '<td style="text-align:center;padding:0 8px 0 0;font-size:11px;color:#777;">' + lbl + '<div style="font-size:16px;color:#222;line-height:1.25;">' + (gz ? esc(gz.charAt(0)) + '<br>' + esc(gz.charAt(1)) : '·<br>·') + '</div></td>';
+  const mB = {}; mB[hl.actor.l] = '#6a1b9a'; mB[hl.action.l] = '#c62828'; const mD = {}; mD[hl.outcome.l] = '#c62828';
+  let h = '<div style="background:#f7f3ff;border:1px solid #b39ddb;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:13px;">' +
+    '<b style="color:#4527a0;font-size:14px;">☯ He Luo · ' + esc(dlabel(hl.date, t)) + '</b>' +
+    '<table style="border-collapse:collapse;margin-top:6px;"><tr>' +
+    '<td style="vertical-align:top;padding-right:14px;"><table style="border-collapse:collapse;"><tr>' + col('Day', hl.bazi.day) + col('Month', hl.bazi.month) + col('Year', hl.bazi.year) + '</tr></table></td>' +
+    '<td style="vertical-align:top;padding-right:14px;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Block ' + hl.actor.n + ' ' + esc(hl.actor.name) + '</div>' + hlHex(hl.block_yy, mB) + '</td>' +
+    '<td style="vertical-align:top;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Day ' + hl.outcome.n + ' ' + esc(hl.outcome.name) + '</div>' + hlHex(hl.day_yy, mD) + '</td></tr></table>' +
+    row('Actor', hl.actor, 'who moves the day (Lord of the block)') + row('Action', hl.action, 'what is done (day line)') + row('Outcome', hl.outcome, 'how it ends (day hexagram)');
+  let x = 'He Luo · ' + dlabel(hl.date, t) + '\n  Day ' + (hl.bazi.day || '') + ' · Month ' + (hl.bazi.month || '') + ' · Year ' + (hl.bazi.year || '') + '\n' +
+    '  Block ' + hl.actor.n + ' ' + hl.actor.name + '\n' + hlTxt(hl.block_yy, (function () { const m = {}; m[hl.actor.l] = 'actor'; m[hl.action.l] = (m[hl.action.l] ? m[hl.action.l] + ', ' : '') + 'action'; return m; })()) +
+    '  Day ' + hl.outcome.n + ' ' + hl.outcome.name + '\n' + hlTxt(hl.day_yy, (function () { const m = {}; m[hl.outcome.l] = 'outcome'; return m; })()) +
+    rowX('Actor', hl.actor) + rowX('Action', hl.action) + rowX('Outcome', hl.outcome);
+  if (hl.hours && hl.hours.length) {
+    h += '<div style="margin-top:9px;"><b style="color:#4527a0;">Hours</b>' + hl.hours.map(o => '<div style="margin-top:3px;"><b style="white-space:nowrap;">' + esc(o.window) + ' ' + esc(o.pillar) + '</b> · ' +
+      esc([o.role, o.relief].filter(Boolean).join(' · ')) + '<br><span style="color:#555;">' + o.n + ' line ' + o.l + ' ' + esc(o.b) + ' ' + esc(o.rel) + ' · <i>«' + esc(o.text) + '»</i></span></div>').join('') + '</div>';
+    x += '  Hours\n' + hl.hours.map(o => '    ' + o.window + ' ' + o.pillar + ' · ' + [o.role, o.relief].filter(Boolean).join(' · ') + '\n      ' + o.n + ' line ' + o.l + ' ' + o.b + ' ' + o.rel + ' · «' + o.text + '»').join('\n') + '\n';
+  }
+  if (hl.correct) {
+    const c = hl.correct, ct = 'Correct: ' + c.problem + (c.good_day_to_correct ? ' — good day to correct' + (c.what_to_do ? ': ' + c.what_to_do : '') : (c.why ? ' — ' + c.why : ''));
+    h += '<div style="margin-top:9px;color:#ad1457;">✚ ' + esc(ct) + '</div>'; x += '  ' + ct + '\n';
+  }
+  if (hl.alarms && hl.alarms.length) {
+    const at = hl.alarms.map(a => typeof a === 'string' ? a : [a.date, a.level, a.note || a.text || (Array.isArray(a.signals) ? a.signals.join(', ') : '')].filter(Boolean).join(' · '));
+    h += '<div style="margin-top:9px;"><b style="color:#c62828;">⚠ Next 30 days</b>' + at.map(a => '<div style="margin-top:2px;color:#b71c1c;">' + esc(a) + '</div>').join('') + '</div>';
+    x += '  Next 30 days\n' + at.map(a => '    ' + a).join('\n') + '\n';
+  }
+  if (bg.length) {
+    h += '<div style="margin-top:9px;"><b style="color:#4527a0;">Background</b>' + bg.map(z => '<div style="margin-top:3px;color:#444;">' + esc(z[0]) + ': ' + esc(id(z[1])) + ' · <b style="color:' + (HL_RC[z[1].rel] || '#333') + ';">' + esc(z[1].rel) + '</b> · <span style="color:' + favC(z[1]) + ';">' + fav(z[1]) + '</span>' +
+      (z[1].timely ? ' · timely' : '') + '<br><i>«' + esc(z[1].text) + '»</i></div>').join('') + '</div>';
+    x += '  Background\n' + bg.map(z => '    ' + z[0] + ': ' + id(z[1]) + ' · ' + z[1].rel + ' · ' + fav(z[1]) + (z[1].timely ? ' · timely' : '') + ' · «' + z[1].text + '»').join('\n') + '\n';
+  }
+  if (notes.length) {
+    h += '<div style="margin-top:9px;"><b style="color:#4527a0;">Notes of the day</b>' + notes.map(n => '<div style="margin-top:3px;color:#444;">• ' + esc(n) + '</div>').join('') + '</div>';
+    x += '  Notes of the day\n' + notes.map(n => '    - ' + n).join('\n') + '\n';
+  }
+  return { h: h + '</div>', x: x + '\n' };
+}
+
 function build(rec, data, loc) {
   const t = T[rec.lang] || T.en;
   const all = [];
@@ -113,6 +205,8 @@ function build(rec, data, loc) {
       aq.list.map(x => '<div style="margin-top:3px;color:' + (x.bad ? '#b71c1c;font-weight:bold' : '#2e7d32') + ';">' + esc(x.text) + '</div>').join('') + '</div>';
     X += (aq.anyBad ? '!! ' : '') + aq.title + '\n' + aq.list.map(x => '  ' + x.text).join('\n') + '\n\n';
   }
+  { const sb = switchBlock(data.aquarium, rec); H += sb.h; X += sb.x; }
+  { const hb = heluoBlock(data.heluo, t); H += hb.h; X += hb.x; }
   { const qb = qdBlock(data.qmdj_day, t); H += qb.h; X += qb.x; }
   if (best.length) {
     H += '<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:8px 12px;margin-bottom:14px;"><b>⭐ ' + esc(t.best) + '</b><br>' +
@@ -289,10 +383,12 @@ function newMonthLine(rec, loc, t) {
   const when = days === 0 ? n.d0 : days === 1 ? n.d1 : n.dn.replace('{n}', days);
   return { days: days, text: n.t + ' (' + j.name + ') ' + when + ': ' + dlabel(iso, t) + ' ' + n.at + ' ' + p.hour + ':' + p.minute };
 }
-async function aquariumStatus(rec) {
+async function aquariumStatus(rec, loc) {
   const S = rec.shelly;
   if (!S || !S.url || !S.token || !Array.isArray(S.devices) || !S.devices.length) return null;
-  const a = AQ[rec.lang] || AQ.en, out = [];
+  const a = AQ[rec.lang] || AQ.en, out = [], switches = [];
+  const t0 = T[rec.lang] || T.en, d0 = todayIn((loc && loc.tz) || 'Europe/Vienna');
+  const d1 = (function () { const d = new Date(d0 + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })();
   for (const dv of S.devices) {
     const tz = dv.tz || 'Europe/Vienna', name = dv.name || dv.device;
     const fmt = ms => { const p = {}; new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: '2-digit', month: '2-digit' }).formatToParts(new Date(ms)).forEach(x => { p[x.type] = x.value; }); return p.day + '/' + p.month; };
@@ -304,6 +400,15 @@ async function aquariumStatus(rec) {
       if (!res.ok || !data) { out.push({ bad: true, text: name + ': ' + a.unread }); continue; }
       const days = (data.plan && Array.isArray(data.plan.days)) ? data.plan.days : [];
       const now = Date.now(), msgs = []; let bad = false;
+      // the switch times of today and tomorrow, as stored (clock time of the device)
+      try {
+        const loc2 = ms => { const p = {}; new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(ms)).forEach(x => { p[x.type] = x.value; });
+          return { d: p.year + '-' + p.month + '-' + p.day, hm: p.hour + ':' + p.minute }; };
+        const iv = days.map(d => ({ on: +d.onTs, off: +d.offTs })).filter(v => isFinite(v.on) && isFinite(v.off) && v.off > v.on).sort((p, q) => p.on - q.on);
+        const of = day => iv.map(v => ({ A: loc2(v.on), B: loc2(v.off - 1000), Bx: loc2(v.off) })).filter(v => v.A.d <= day && v.B.d >= day)
+          .map(v => ({ on: (v.A.d < day ? dlabel(v.A.d, t0) + ' ' : '') + v.A.hm, onPrev: v.A.d < day, off: (v.Bx.d > day ? dlabel(v.Bx.d, t0) + ' ' : '') + v.Bx.hm }));
+        switches.push({ icon: /letto|porta|fount|fontan/i.test(dv.device + ' ' + name) ? '\u26F2' : '\uD83D\uDC20', name: name, today: of(d0), tomorrow: of(d1) });
+      } catch (eSw) {}
       const lastOff = days.reduce((m, d) => Math.max(m, +d.offTs || 0), 0);
       if (!days.length) { msgs.push(a.none); bad = true; }
       else if (lastOff < now) { msgs.push(a.ended.replace('{d}', fmt(lastOff))); bad = true; }
@@ -315,7 +420,7 @@ async function aquariumStatus(rec) {
       out.push({ bad: bad, text: name + ': ' + msgs.join(' · ') });
     } catch (e) { out.push({ bad: true, text: name + ': ' + a.unread }); }
   }
-  return { title: a.title, list: out, anyBad: out.some(x => x.bad) };
+  return { title: a.title, list: out, anyBad: out.some(x => x.bad), switches: switches };
 }
 
 async function main() {
@@ -336,6 +441,10 @@ async function main() {
       const j = await res.json().catch(() => null);
       const have = new Set([].concat.apply([], recs.map(r => _mails(r.email).map(x => x.toLowerCase()))));
       const add = (j && Array.isArray(j.subscribers) ? j.subscribers : []).filter(l => l && l.email && !have.has(String(l.email).toLowerCase()));
+      // He Luo of the day (Edu 25/11/2026): never for a line a student sent from the app; the owner is the
+      // line of the secret whose token reads the subscribers (the Worker's master token).
+      add.forEach(l => { l._sub = true; delete l.heluo; });
+      if (src && res.ok && j && Array.isArray(j.subscribers)) src._owner = true;
       recs = recs.concat(add);
       console.log('subscribers from the app: ' + add.length + (res.ok ? '' : ' (HTTP ' + res.status + ')'));
     }
@@ -370,7 +479,13 @@ async function main() {
       const others = {};
       houses.filter(h => !sameTz(h.tz, loc.tz)).forEach(h => { (others[h.tz] = others[h.tz] || []).push(h); });
       Object.keys(others).forEach(z => { const d2 = run(z, { houses: others[z], skip_hours: true }); (d2.fs || []).forEach(r => { r.local_time = true; }); data.fs = (data.fs || []).concat(d2.fs || []); });
-      try { data.aquarium = await aquariumStatus(rec); } catch (eAq) { data.aquarium = null; }
+      try { data.aquarium = await aquariumStatus(rec, loc); } catch (eAq) { data.aquarium = null; }
+      // He Luo of today: a line of the secret with "heluo": "M" | "F"; the owner's line gets it by itself
+      // (HELUO_OWNER_GENDER) unless it says "heluo": false. Its own process, so the hours above do not change.
+      try {
+        const hg = rec._sub ? null : (rec.heluo === 'M' || rec.heluo === 'F') ? rec.heluo : (rec.heluo === false ? null : (rec._owner ? HELUO_OWNER_GENDER : null));
+        if (hg && rec.birth_date && rec.birth_time) { const d3 = run(loc.tz, { heluo: hg, heluo_only: true, skip_hours: true, days: 1 }); data.heluo = d3.heluo || null; if (!d3.heluo) console.log(tag + ': He Luo not computed'); }
+      } catch (eHl) { data.heluo = null; console.log(tag + ': He Luo not computed'); }
       const msg = build(rec, data, loc);
       const n = data.days.reduce((s, d) => s + d.hours.length, 0);
       if (dry) {

@@ -35,6 +35,12 @@ recipient's city, with daylight saving handled day by day.
   *warn about the aquarium light plans*) on a device where Shelly is configured. The email then says, at the top,
   until when each plan runs, and warns in red (subject starting with ⚠ 🐠) when a plan has ended, ends within a
   day and a half, is paused, or has missed switch-ons. The Worker token stays inside the secret, never in the logs.
+  With `shelly`, the email also shows a **Switch ON / OFF** box: the real switch times of today and tomorrow of every
+  device (aquariums and fountains), read from the plans stored in the Worker.
+- **He Luo of the day** (Edu 25/11/2026): a box with the app's own He Luo reading of today (actor, action, outcome with
+  the line texts, hours, background, notes). Only for the owner's line (the line whose `shelly` token reads the
+  subscribers) or a line of the secret with `"heluo": "M"` / `"F"`; `"heluo": false` turns it off. Never for the lines
+  the students send from the app. It needs `birth_time`.
 - One object per person, separated by commas.
 
 ## Students subscribe by themselves (session 41)
