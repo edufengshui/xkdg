@@ -522,6 +522,7 @@ async function main() {
           try { const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 15000);
             const rs = await fetch(String(rec.shelly.url).replace(/\/+$/, '') + '?get_pref&token=' + encodeURIComponent(rec.shelly.token), { method: 'POST', signal: ctl.signal }); clearTimeout(tm);
             const jp = await rs.json().catch(() => null);
+            if (jp && jp.action === 'get_pref') rec._sphApp = true;   // the Worker knows ?get_pref (25/11/2026 or later)
             if (jp && jp.action === 'get_pref' && jp.pref && typeof jp.pref.sphere === 'string') { sph = jp.pref.sphere; vr = String(jp.pref.variant || ''); }
           } catch (ePf) {}
         }
@@ -562,7 +563,9 @@ async function main() {
           await mailer.sendMail({ from: '"XKDG" <' + process.env.GMAIL_USER + '>', to: sends[k].to, subject: msg.subject, html: msg.html, text: msg.text });
         }
       }
-      console.log(tag + ': ' + n + ' hours' + (sends.length > 1 ? ', ' + sends.length + ' emails' : '') + (dry ? ' (dry run, not sent)' : ', sent'));
+      // counts only (the log is public): how many emails, how many carry a He Luo box, whether the sphere came from the app
+      console.log(tag + ': ' + n + ' hours' + (sends.length > 1 ? ', ' + sends.length + ' emails' : '') +
+        (sends.some(x => x.heluo) ? ', He Luo in ' + sends.filter(x => x.heluo).length + (rec._sphApp ? ' (sphere from the app)' : '') : '') + (dry ? ' (dry run, not sent)' : ', sent'));
     } catch (e) { failed++; console.log(tag + ': FAILED - ' + String(e.message || e).replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '<email>').slice(0, 200)); }
   }
   if (failed) process.exit(1);

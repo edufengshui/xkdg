@@ -8,6 +8,11 @@ on:
   # Started every morning by the Cloudflare Worker cron (digest/cron-worker.js, 04:15 UTC):
   # GitHub's own schedule was late or skipped, so it is removed (no duplicate emails).
   workflow_dispatch:          # the Worker + the "Run workflow" button
+    inputs:
+      check:                  # "Run workflow" with this ticked: everything is computed, NOTHING is sent (Edu 25/11/2026)
+        description: 'Check only: compute everything, send no email'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -30,4 +35,6 @@ jobs:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           XKDG_DIGEST_RECIPIENTS: ${{ secrets.XKDG_DIGEST_RECIPIENTS }}
+          DRY_RUN: ${{ inputs.check && '1' || '' }}
+          DRY_RUN_DIR: ${{ runner.temp }}
         run: node digest.js
