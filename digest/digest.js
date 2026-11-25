@@ -170,13 +170,13 @@ function heluoBlock(hl, t) {
   const col = (lbl, gz) => '<td style="text-align:center;padding:0 8px 0 0;font-size:11px;color:#777;">' + lbl + '<div style="font-size:16px;color:#222;line-height:1.25;">' + (gz ? esc(gz.charAt(0)) + '<br>' + esc(gz.charAt(1)) : '·<br>·') + '</div></td>';
   const mB = {}; mB[hl.actor.l] = '#6a1b9a'; mB[hl.action.l] = '#c62828'; const mD = {}; mD[hl.outcome.l] = '#c62828';
   let h = '<div style="background:#f7f3ff;border:1px solid #b39ddb;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:13px;">' +
-    '<b style="color:#4527a0;font-size:14px;">☯ He Luo · ' + esc(dlabel(hl.date, t)) + '</b> <span style="color:#666;font-size:12px;">· ' + esc(hl.sphere || 'General') + '</span>' +
+    '<b style="color:#4527a0;font-size:14px;">☯ He Luo' + (hl.who ? ' of ' + esc(hl.who) : '') + ' · ' + esc(dlabel(hl.date, t)) + '</b> <span style="color:#666;font-size:12px;">· ' + esc(hl.sphere || 'General') + '</span>' +
     '<table style="border-collapse:collapse;margin-top:6px;"><tr>' +
     '<td style="vertical-align:top;padding-right:14px;"><table style="border-collapse:collapse;"><tr>' + col('Day', hl.bazi.day) + col('Month', hl.bazi.month) + col('Year', hl.bazi.year) + '</tr></table></td>' +
     '<td style="vertical-align:top;padding-right:14px;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Block ' + hl.actor.n + ' ' + esc(hl.actor.name) + '</div>' + hlHex(hl.block_yy, mB) + '</td>' +
     '<td style="vertical-align:top;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Day ' + hl.outcome.n + ' ' + esc(hl.outcome.name) + '</div>' + hlHex(hl.day_yy, mD) + '</td></tr></table>' +
     row('Actor', hl.actor, 'who moves the day (Lord of the block)') + row('Action', hl.action, 'what is done (day line)') + row('Outcome', hl.outcome, 'how it ends (day hexagram)');
-  let x = 'He Luo · ' + dlabel(hl.date, t) + ' · ' + (hl.sphere || 'General') + '\n  Day ' + (hl.bazi.day || '') + ' · Month ' + (hl.bazi.month || '') + ' · Year ' + (hl.bazi.year || '') + '\n' +
+  let x = 'He Luo' + (hl.who ? ' of ' + hl.who : '') + ' · ' + dlabel(hl.date, t) + ' · ' + (hl.sphere || 'General') + '\n  Day ' + (hl.bazi.day || '') + ' · Month ' + (hl.bazi.month || '') + ' · Year ' + (hl.bazi.year || '') + '\n' +
     '  Block ' + hl.actor.n + ' ' + hl.actor.name + '\n' + hlTxt(hl.block_yy, (function () { const m = {}; m[hl.actor.l] = 'actor'; m[hl.action.l] = (m[hl.action.l] ? m[hl.action.l] + ', ' : '') + 'action'; return m; })()) +
     '  Day ' + hl.outcome.n + ' ' + hl.outcome.name + '\n' + hlTxt(hl.day_yy, (function () { const m = {}; m[hl.outcome.l] = 'outcome'; return m; })()) +
     rowX('Actor', hl.actor) + rowX('Action', hl.action) + rowX('Outcome', hl.outcome);
@@ -528,17 +528,41 @@ async function main() {
         sph = /^[a-z]{0,20}$/.test(sph) ? sph : ''; vr = /^[A-Za-z0-9_-]{0,20}$/.test(vr) ? vr : '';
         if (hg && rec.birth_date && rec.birth_time) { const d3 = run(loc.tz, { heluo: hg, heluo_only: true, skip_hours: true, days: 1, sphere: sph, variant: vr }); data.heluo = d3.heluo || null; if (!d3.heluo) console.log(tag + ': He Luo not computed'); }
       } catch (eHl) { data.heluo = null; console.log(tag + ': He Luo not computed'); }
-      const msg = build(rec, data, loc);
+      // Who reads which He Luo (Edu 25/11/2026: «la mail a Thao deve contenere il SUO HLLS del giorno, non il mio»).
+      // A line with several addresses and a He Luo: the reading of the line is for the FIRST address only. Another
+      // address gets its own reading when the line carries that person — "heluo_for": { "<address>": { "name",
+      // "birth_date", "birth_time", "gender": "M" | "F", "sphere" } } — and no He Luo box otherwise. The rest of the
+      // email is the same for all. One address, or no He Luo: one email to everybody, as before.
+      const mails = _mails(rec.email), sends = [];
+      if (data.heluo && mails.length > 1) {
+        const hf = {}; if (!rec._sub && rec.heluo_for && typeof rec.heluo_for === 'object') Object.keys(rec.heluo_for).forEach(k => { hf[String(k).trim().toLowerCase()] = rec.heluo_for[k]; });
+        sends.push({ to: [mails[0]], heluo: data.heluo });
+        const plain = [];
+        mails.slice(1).forEach(m => {
+          const p = hf[m.toLowerCase()]; let h = null;
+          if (p && typeof p === 'object' && /^\d{4}-\d{2}-\d{2}$/.test(String(p.birth_date || '')) && /^\d{1,2}:\d{2}$/.test(String(p.birth_time || '')) && (p.gender === 'M' || p.gender === 'F')) {
+            try { const d4 = run(loc.tz, { birth_date: p.birth_date, birth_time: p.birth_time, jiazi: undefined, heluo: p.gender, heluo_only: true, skip_hours: true, days: 1,
+                sphere: /^[a-z]{1,20}$/.test(String(p.sphere || '')) ? p.sphere : '', variant: '' });
+              h = d4.heluo || null; if (h) h.who = String(p.name || '').slice(0, 40); } catch (e4) { h = null; }
+            if (!h) console.log(tag + ': He Luo of a second reader not computed');
+          }
+          if (h) sends.push({ to: [m], heluo: h }); else plain.push(m);
+        });
+        if (plain.length) sends.push({ to: plain, heluo: null });
+      } else sends.push({ to: mails, heluo: data.heluo || null });
       const n = data.days.reduce((s, d) => s + d.hours.length, 0);
-      if (dry) {
-        const dir = process.env.DRY_RUN_DIR || __dirname;
-        fs.writeFileSync(path.join(dir, 'digest-' + (i + 1) + '.html'), '<meta charset="utf-8">' + msg.html);
-        fs.writeFileSync(path.join(dir, 'digest-' + (i + 1) + '.txt'), msg.subject + '\n\n' + msg.text);
-        console.log(tag + ': ' + n + ' hours (dry run, not sent)');
-      } else {
-        await mailer.sendMail({ from: '"XKDG" <' + process.env.GMAIL_USER + '>', to: _mails(rec.email), subject: msg.subject, html: msg.html, text: msg.text });
-        console.log(tag + ': ' + n + ' hours, sent');
+      for (let k = 0; k < sends.length; k++) {
+        data.heluo = sends[k].heluo;
+        const msg = build(rec, data, loc);
+        if (dry) {
+          const dir = process.env.DRY_RUN_DIR || __dirname, nm = 'digest-' + (i + 1) + (k ? String.fromCharCode(97 + k) : '');
+          fs.writeFileSync(path.join(dir, nm + '.html'), '<meta charset="utf-8">' + msg.html);
+          fs.writeFileSync(path.join(dir, nm + '.txt'), msg.subject + '\n\n' + msg.text);
+        } else {
+          await mailer.sendMail({ from: '"XKDG" <' + process.env.GMAIL_USER + '>', to: sends[k].to, subject: msg.subject, html: msg.html, text: msg.text });
+        }
       }
+      console.log(tag + ': ' + n + ' hours' + (sends.length > 1 ? ', ' + sends.length + ' emails' : '') + (dry ? ' (dry run, not sent)' : ', sent'));
     } catch (e) { failed++; console.log(tag + ': FAILED - ' + String(e.message || e).replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '<email>').slice(0, 200)); }
   }
   if (failed) process.exit(1);
