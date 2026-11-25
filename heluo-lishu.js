@@ -309,14 +309,25 @@
   function sphGet() { var v = ''; try { v = localStorage.getItem('xkdg_hl_sphere') || ''; } catch (e) {} return { money: 'wealth', love: 'relationship' }[v] || v; }
   // variant of Speak / Legal: the same choice as next to PURPOSE in the XKDG Date Selection
   function sphVar(k) { try { return localStorage.getItem('xkdg_xk_variant_' + k) || ''; } catch (e) { return ''; } }
-  root.xkdgHLSphereVar = function (k, v) { try { localStorage.setItem('xkdg_xk_variant_' + k, v || ''); } catch (e) {} try { render(); } catch (e) {} };
+  // The sphere chosen also goes to the owner's Shelly Worker (?set_pref), so the daily email comments the line texts in
+  // the same sphere (Edu 25/11/2026). Only where the He Luo is open and the Worker is configured; silent when it fails.
+  root.xkdgHLSphereSync = function (v) {
+    try {
+      if (typeof root.xkdgHeluoAllowed === 'function' && !root.xkdgHeluoAllowed()) return;
+      var c = JSON.parse(localStorage.getItem('xkdg_shelly_cfg') || 'null'); if (!c || !c.url || !c.token || typeof fetch !== 'function') return;
+      var sp = v == null ? sphGet() : ({ money: 'wealth', love: 'relationship' }[v] || v || '');
+      fetch(String(c.url).replace(/\/+$/, '') + '/?set_pref&token=' + encodeURIComponent(c.token), { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sphere: sp, variant: sp ? sphVar(sp) : '' }) }).catch(function () {});
+    } catch (e) {}
+  };
+  root.xkdgHLSphereVar = function (k, v) { try { localStorage.setItem('xkdg_xk_variant_' + k, v || ''); } catch (e) {} try { render(); } catch (e) {} try { root.xkdgHLSphereSync(); } catch (e) {} };
   function sphVarSel() { var S = root.XKDG_HELUO_READINGS && root.XKDG_HELUO_READINGS.spheres, sp = sphGet(), E = S && S.resolve && S.resolve(sp, true, sphVar(sp));
     if (!E || !E.variants) return '';
     return '<div><label style="font-size:11px;color:#666;display:block;">' + E.label + ' as</label><select onchange="xkdgHLSphereVar(\'' + sp + '\',this.value)" style="padding:5px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;">'
       + E.variants.map(function (x) { return '<option value="' + x[0] + '"' + (x[0] === E.variant ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></div>'; }
   function sphOpts() { var S = root.XKDG_HELUO_READINGS && root.XKDG_HELUO_READINGS.spheres, cur = sphGet();
     return '<option value="">General</option>' + (S ? S.list : SPH_FALL).map(function (x) { return '<option value="' + x[0] + '"' + (cur === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join(''); }
-  root.xkdgHLSphere = function (v) { try { localStorage.setItem('xkdg_hl_sphere', v || ''); } catch (e) {} try { render(); } catch (e) {} try { var z = $('hl-sph-var'); if (z) z.innerHTML = sphVarSel(); } catch (e) {} };
+  root.xkdgHLSphere = function (v) { try { localStorage.setItem('xkdg_hl_sphere', v || ''); } catch (e) {} try { render(); } catch (e) {} try { var z = $('hl-sph-var'); if (z) z.innerHTML = sphVarSel(); } catch (e) {} try { root.xkdgHLSphereSync(v); } catch (e) {} };
   function sphPron(t, male) {
     var m = male ? { he: 'he', He: 'He', his: 'his', His: 'His', him: 'him', himself: 'himself' } : { he: 'she', He: 'She', his: 'her', His: 'Her', him: 'her', himself: 'herself' };
     return String(t).replace(/\{(\w+)\}/g, function (x, k) { return m[k] || x; });
@@ -361,6 +372,25 @@
         + (dy ? '<br><span style="color:#5d4037;">↻ ' + dy + '</span>' : '') + ' <span style="color:#999;font-size:10px;">' + cyc + '</span>'
         + (body ? '<br>' + body : '') + (hand ? '' : ' <span style="color:#999;font-size:10px;">(general image)</span>') + lk + '</div>';
     } catch (e) { return ''; }
+  }
+  // The same reading as DATA (Edu 25/11/2026: «rendere più evidente … nei commenti ai testi»): for the comment under a
+  // line text where no hexagram is drawn (film of the day, daily email). spKey: a sphere key, '' = General, undefined =
+  // the sphere chosen in the window. Same rules as sphereHtml: the relation is the subject, a hand-written reading holds
+  // only for the relation it was written for, the time (sphTime) decides the side.
+  function sphereInfo(n, ln, me, male, spKey) {
+    try {
+      var RD = root.XKDG_HELUO_READINGS, S = RD && RD.spheres, d = NJ() && NJ()[n]; if (!RD || !d || !ln) return null;
+      var sp = spKey == null ? sphGet() : spKey, E = sp && S && S.resolve ? S.resolve(sp, male !== false, sphVar(sp)) : null;
+      var L = d.lines[ln - 1], r = relL(me, L.el);
+      var hand = E && S.lines[E.key] && S.lines[E.key][n] && S.lines[E.key][n][ln];
+      if (hand && S.handFor && relL(S.handFor, L.el) !== r) hand = null;
+      var t = hand || (RD[n] && RD[n][ln]) || null;
+      var sc = root.XKDG_HELUO_SCORES && root.XKDG_HELUO_SCORES[n] ? root.XKDG_HELUO_SCORES[n].l[ln] : 0, sd = sphSide(L, sc);
+      return { sphere: E ? E.label + (E.variantLabel ? ' · ' + E.variantLabel : '') : '', icon: E ? E.icon : '', rel: r, relation: REL[r],
+        meaning: E && E.rel[r] ? sphPron(E.rel[r], male !== false) : '', off: E && E.core && E.core.indexOf(r) < 0 && E.heart ? E.heart : '',
+        dyn: E && E.dyn && E.dyn[r] ? sphPron(E.dyn[r], male !== false) : '', side: sd.v, why: sd.why,
+        strong: t ? sphPron(t.strong, male !== false) : '', weak: t ? sphPron(t.weak, male !== false) : '', hand: !!hand };
+    } catch (e) { return null; }
   }
   function qyTxt(n) { var q = qyOn() && qiYun(n); return q ? 'Qi <b style="color:#c62828;">' + q[0] + '</b> · Yun <b style="color:#1565c0;">' + q[1] + '</b>' : ''; }
   root.xkdgHLQiYun = function (on) { try { localStorage.setItem('xkdg_hl_qiyun', on ? '1' : '0'); } catch (e) {} try { render(); } catch (e) {} };
@@ -1136,7 +1166,7 @@
     annual: annual, annualHex: annualHex, monthlyHex: monthlyHex, qiMonth: qiMonth, QI_EN: QI_EN, dailyHex: dailyHex, monthStarts: monthStarts, open: open,
     currentChart: function () { return _chart; },
     periods: { months: msTST, annual: annualPeriods, month: monthPeriods, block: blockPeriods, day: dayPeriods, dayMs: dayMs },
-    ui: { sphTime: sphTime, qiYun: qiYun, cycleHexSvg: cycleHexSvg, lineBody: lineBody, readAge: readAge, timeReading: timeReading, hexName: hexName, najiaLine: najiaLine } };
+    ui: { sphTime: sphTime, sphereInfo: sphereInfo, sphOpts: sphOpts, sphGet: sphGet, qiYun: qiYun, cycleHexSvg: cycleHexSvg, lineBody: lineBody, readAge: readAge, timeReading: timeReading, hexName: hexName, najiaLine: najiaLine } };
   root.openHeluoLishu = open;
   // ── He Luo inside the XKDG Date Selection (Edu, 11/11/2026): Person A's chart without opening the window ──
   // chartA() → { c, R, male, Pn } or { err } ; ensure(cb) loads Na Jia, texts and the Date Selection files, then calls cb.

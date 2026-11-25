@@ -74,6 +74,11 @@
  *   { "days": [ { "date":"2026-07-07", "onTs": 1783405920000, "offTs": 1783443600000 }, ... ] }
  *   onTs / offTs are epoch MILLISECONDS in UTC (the app computes them, incl. DST).
  *
+ * ── PREF (25/11/2026) ─────────────────────────────────────────────────────
+ *   ?set_pref (POST JSON { sphere, variant }) | ?get_pref     Edu's token only.
+ *   The sphere of life chosen in the He Luo window; digest/digest.js reads it
+ *   for the comments of the daily email.
+ *
  * ── DIGEST ────────────────────────────────────────────────────────────────
  *   ?set_digest (POST JSON) | ?get_digest | ?clear_digest
  *   Not per device: it follows the PERSON. The Worker never computes it.
@@ -456,6 +461,22 @@ export default {
     if (p.digest_subscribers !== undefined) {
       if (!admin) return json({ error: 'Unauthorized.' }, 401);
       return subscribers(env);
+    }
+    // PREF (Edu 25/11/2026) — small choices of the owner that the daily email reads: the sphere of life chosen in
+    // the He Luo window, for the comments to the line texts.  POST ?set_pref  JSON { sphere, variant }  |  ?get_pref
+    // Edu's token only. KV key `pref`. Nothing here touches a plug or a plan.
+    if (p.set_pref !== undefined || p.get_pref !== undefined) {
+      if (!admin) return json({ error: 'Unauthorized.' }, 401);
+      if (!env.XKDG_KV) return json({ ok: false, error: 'Server not ready (KV missing).' }, 500);
+      if (p.set_pref !== undefined) {
+        const b = (p._body && typeof p._body === 'object' && !Array.isArray(p._body)) ? p._body : {};
+        const pref = { sphere: String(b.sphere || '').toLowerCase().replace(/[^a-z]/g, '').slice(0, 20),
+                       variant: String(b.variant || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20), at: Date.now() };
+        await env.XKDG_KV.put('pref', JSON.stringify(pref));
+        return json({ action: 'set_pref', ok: true, pref });
+      }
+      let pref = null; try { pref = JSON.parse(await env.XKDG_KV.get('pref') || 'null'); } catch (e) {}
+      return json({ action: 'get_pref', ok: true, pref });
     }
     if (p.unregister !== undefined) {
       const d = String(p.device || '').toLowerCase();

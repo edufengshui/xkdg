@@ -39,6 +39,8 @@ const SKIP = { 'gdrive-sync.js': 1, 'version.js': 1, 'register-sw.js': 1, 'index
 const HL = (P.heluo === 'M' || P.heluo === 'F') ? P.heluo : null;
 const inject = src => { const s = d.createElement('script'); s.textContent = fs.readFileSync(path.join(ROOT, src), 'utf8'); d.body.appendChild(s); };
 if (HL) { try { w.localStorage.setItem('xkdg_person_gender', JSON.stringify({ X: HL })); } catch (e) {} }
+// the sphere of life for the comments to the line texts (chosen in the He Luo window, sent by digest.js)
+if (HL && P.sphere) { try { w.localStorage.setItem('xkdg_hl_sphere', String(P.sphere)); if (P.variant) w.localStorage.setItem('xkdg_xk_variant_' + P.sphere, String(P.variant)); } catch (e) {} }
 fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(/<script src="([^"]+)"/g, (m, src) => {
   if (/^https?:/.test(src) || SKIP[src] || !fs.existsSync(path.join(ROOT, src))) return m;
   if (HL && src === 'heluo-lishu.js') { const s0 = d.createElement('script'); s0.textContent = 'window.xkdgHeluoAllowed = function () { return true; };'; d.body.appendChild(s0); }
@@ -144,6 +146,15 @@ if (HL) {
         s: o.text_score, timely: /^strong/.test(o.season || ''), up: (NJ[o.hexagram] || {}).upper || '', lo: (NJ[o.hexagram] || {}).lower || '' } : null;
       // the three Luck from the year (Heaven, Earth, Fame) and their opposites, as the chart of the app gives them
       let luck = null; try { const K = w.XKDGHeluo.chartA().R.luck; luck = { heaven: K.heaven, earth: K.earth, fame: K.fame, opposite: K.opposite || {} }; } catch (e) {}
+      // the comment already written for the line (heluo-readings.js), in the sphere chosen, on the side the time gives it
+      const UI = (w.XKDGHeluo && w.XKDGHeluo.ui) || {}, male = HL === 'M', me = (r.cycle || {}).person_element;
+      const bzr = {}; (r.bazi_of_the_day_column_order || []).forEach(x => { const p = String(x).split(' '); bzr[p[0].toLowerCase()] = p[1]; });
+      const cmt = o => { if (!o || !UI.sphereInfo || !me) return o;
+        let pv; try { if (UI.sphTime) pv = UI.sphTime({ y: (bzr.year || '').charAt(1), m: (bzr.month || '').charAt(1), d: (bzr.day || '').charAt(1) });
+          const I = UI.sphereInfo(o.n, o.l, me, male);
+          if (I) o.cmt = { sphere: I.sphere, icon: I.icon, relation: I.relation, meaning: I.meaning, off: I.off, side: I.side, strong: I.strong, weak: I.weak, hand: I.hand };
+        } catch (e) {} finally { try { if (UI.sphTime) UI.sphTime(pv); } catch (e) {} }
+        return o; };
       const HS = G('HOUR_STARTS'), ST = w.XKDGSolarTime, [y, m, dd] = P.start.split('-').map(Number);
       const f2 = t => String(t.h).padStart(2, '0') + ':' + String(t.mi).padStart(2, '0');
       const win = br => { try { const i = '子丑寅卯辰巳午未申酉戌亥'.indexOf(br); if (i < 0) return '';
@@ -153,7 +164,8 @@ if (HL) {
         n: h.hexagram, l: h.line, b: h.branch, rel: h.relation, s: h.text_score, text: h.text || '', role: h.role || '', relief: h.relieves_prevalence || '' }));
       out.heluo = { date: P.start, bazi: bz, luck: luck, age: r.age_heluo, phase: (r.cycle || {}).phase || '',
         cycle: ln(sc.cycle), annual: ln(sc.annual), annual_month: ln(bd.annual_line_of_the_month), month: ln(bd.month_line),
-        actor: ln(F.actor), action: ln(ac.day_line), outcome: ln(ac.outcome),
+        actor: cmt(ln(F.actor)), action: cmt(ln(ac.day_line)), outcome: cmt(ln(ac.outcome)),
+        sphere: (function () { try { const k = UI.sphGet ? UI.sphGet() : ''; const E = k && w.XKDG_HELUO_READINGS.spheres.resolve(k, male, w.localStorage.getItem('xkdg_xk_variant_' + k) || ''); return E ? E.icon + ' ' + E.label + (E.variantLabel ? ' \u00b7 ' + E.variantLabel : '') : ''; } catch (e) { return ''; } })(),
         block_yy: F.actor ? yy(F.actor.hexagram) : null, day_yy: ac.outcome ? yy(ac.outcome.hexagram) : null,
         prevalence: (r.prevalence || []).filter(x => x !== 'none'), levels: r.relations_between_levels || [],
         year_clash: sc.year_clash || [], day_clash: ac.day_clash || [], notes: r.notes_of_the_day || [],

@@ -1240,7 +1240,7 @@
       h += '<div onclick="xkdgHLDSOpen(' + g.date + ')" style="cursor:pointer;border-top:1px solid #eee;padding:5px 4px;' + (on ? 'background:#ede7f6;' : '') + '">'
         + '<b>' + fmtDate(g.date) + '</b> <span style="font-size:10px;color:#999;">' + g.Pe.day + ' day · ' + g.Pe.month + ' month</span> · <b style="color:' + (g.adj > 0 ? '#2e7d32' : g.adj < 0 ? '#c62828' : '#777') + ';">☯ ' + sgn(g.adj) + '</b>'
         + '<div style="font-size:11px;color:#444;">' + esc(g.sum) + '</div>' + xkLine(g.date) + '</div>';
-      if (on) h += '<div style="padding:2px 4px 10px;">' + expDetail(g) + '</div>';
+      if (on) h += '<div style="padding:2px 4px 10px;">' + expDetail(g) + cmtBox(isoDay(g.date)) + '</div>';
     });
     return h + '<div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Experimental (Edu, 24–25/11/2026). Every day of the range, He Luo only; «＋ XKDG» adds the favourable hours of the usual XKDG Date Selection. ☯ = the points this reading would add to the XKDG score (5% each). Tendencies seen on a few dozen cases, not rules.</div>';
   }
@@ -1350,14 +1350,79 @@
         instruction: 'The user chose this SPHERE OF LIFE in the He Luo window: read every line inside THIS sphere, but the RELATION of the active line (Parent, Children, Wealth, Ghost, Brothers for this person) is the SUBJECT of the reading and the sphere is only the field (Edu 16/11/2026). First take the relation of the line, then what_each_relation_means_in_this_sphere, then apply the image of the line text to THAT subject. NEVER read the heart of the sphere on a line whose relation is not in relations_that_carry_the_heart_of_this_sphere (e.g. in Relationship a Brothers line is the man himself or friends and rivals, never a love affection). Then read the MOVEMENT among the active relations with five_principles_of_edu and how_each_relation_moves_in_this_sphere: who feeds whom, who drains, who attacks, and what is ABSENT (what_an_absence_says); judge who generates only after checking the strength of the receiver (timely, not void, not clashed). Use a written reading only when the line has, for this person, the relation named in its only_when_the_line_is (strong = the time helps the line, weak = the time hurts it). If the question is plainly about another sphere, follow the question.' };
     } catch (e) { return undefined; }
   }
+  // ── Comment to a line text (Edu 25/11/2026) ────────────────────────────────────────────────────────────────────────
+  // Fixed comment: the reading already written for the line (heluo-readings.js), in the sphere chosen, on the side the
+  // time gives it. Shown where no hexagram is drawn under the text (a drawn hexagram already carries it).
+  function cmtFixed(n, l, me, male) {
+    var I = U().sphereInfo ? U().sphereInfo(n, l, me, male) : null; if (!I || !(I.strong || I.meaning)) return '';
+    var body = I.side > 0 ? esc(I.strong) : I.side < 0 ? esc(I.weak) : (I.strong ? '<span style="color:#2e7d32;">▲ with the time in favour:</span> ' + esc(I.strong) + ' <span style="color:#c62828;">▼ against:</span> ' + esc(I.weak) : '');
+    return '<div style="font-size:12px;line-height:1.5;margin:2px 0 6px;padding:5px 8px;background:#fff8e1;border-left:3px solid #f9a825;border-radius:4px;color:#333;">💬 '
+      + (I.sphere ? '<b>' + I.icon + ' ' + esc(I.sphere) + '</b> · ' + I.relation + ' = ' + esc(I.meaning) + '.' + (I.off ? ' <span style="color:#b26a00;">Read the line about this, not about ' + esc(I.off) + '.</span>' : '') + (body ? '<br>' : '') : '')
+      + body + (I.hand ? '' : ' <span style="color:#999;font-size:10px;">(general image)</span>') + '</div>';
+  }
+  // «💬 Comment» (Edu 25/11/2026, «fissi + Assistant a richiesta»): the Assistant writes a real comment of the day — it
+  // ties actor, action and outcome in the sphere chosen, and explains a fact or an intention the user writes in the note.
+  // One request, only when the button is pressed (XKDGAIOneShot: the same route and cost as the chat). The facts are those
+  // of aiDay (the Assistant's own tool); nothing is scored here.
+  var CMT_SYS = 'You are the He Luo Li Shu reader inside the XKDG app of Edu (Chinese metaphysics teacher). You receive the FACTS of ONE day for ONE person, computed by the app (JSON), the SPHERE OF LIFE chosen, and sometimes a NOTE written by the user: something that happened that day, or something the user intends to do.\n'
+    + 'Write a short comment that INTERPRETS the day. Rules:\n'
+    + '1. Go to the essence: what kind of day this is for the person in the chosen sphere, and what to do or to watch. Plain words, short paragraphs or a few short bullets. No numbers, no scores, no tables. Name a line once (for example «30 line 4») and then speak of what it means.\n'
+    + '2. The film of the day: the Lord of the block is the ACTOR (who or what moves the day), the day line is the ACTION (what is done), the same line in the day hexagram is the OUTCOME (how it ends); cycle, year and month are the background. Read them as one story, in this order.\n'
+    + '3. The RELATION of each line for this person (Parent, Children, Wealth, Ghost, Brothers) is the SUBJECT of the reading; the sphere is only the field. Take the meaning of the relation in the sphere from sphere_of_life, then apply the IMAGE of the line text to that subject, quoting a few words of the text. Never read the heart of the sphere on a line whose relation does not carry it.\n'
+    + '4. A text shows its good side when the time helps the line (timely in the month, same branch as the day or month) and its hard side when the line is clashed, void or not timely. A good result with a dark text has a price: say which. A void line says «later», not «nothing».\n'
+    + '5. Use the notes of the day, the clashes, a natal void that comes out and the film hours only when they add something; give the hours as they are written in the facts, saying they are true solar time.\n'
+    + '6. NOTE with a fact: explain the fact with the texts, as literally as the images allow; say which line speaks of it and say plainly what does not fit. Do not force a match. NOTE with an intention: say whether the day suits it, in which hour, and what to watch.\n'
+    + '7. Never invent rules, stars or meanings that are not in the facts. Do not propose other dates. Follow reading_rules in the facts when they do not contradict these rules.\n'
+    + '8. Close with one short line: this is a reading of one day, not a certainty.\n';
+  function cmtBox(iso) {
+    if (typeof root.XKDGAIOneShot !== 'function') return '';
+    var F = 'padding:5px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;';
+    return '<div class="hl-cmt" onclick="event.stopPropagation()" style="margin-top:6px;border:1px solid #b39ddb;border-radius:8px;padding:6px 8px;background:#faf7ff;">'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><select class="hl-cmt-sph" title="Sphere of life" onchange="XKDGHeluoDS.cmtSphere(this.value)" style="' + F + '">' + (U().sphOpts ? U().sphOpts() : '<option value="">General</option>') + '</select>'
+      + '<button onclick="XKDGHeluoDS.comment(\'' + iso + '\', this)" style="' + F + 'background:#5e35b1;color:#fff;font-weight:600;cursor:pointer;">💬 Comment</button>'
+      + '<span style="font-size:10px;color:#999;">written by the Assistant, on request</span></div>'
+      + '<textarea class="hl-cmt-note" rows="2" placeholder="Optional: what happened that day, or what you want to do (any language)" style="width:100%;box-sizing:border-box;margin-top:5px;' + F + '"></textarea>'
+      + '<div class="hl-cmt-out" style="display:none;white-space:pre-wrap;font-size:13px;line-height:1.55;color:#222;margin-top:6px;padding-top:6px;border-top:1px dashed #ccc;"></div></div>';
+  }
+  // the sphere of the comment: stored like the Sphere of the He Luo window (same key), without redrawing the page
+  function cmtSphere(v) {
+    try { localStorage.setItem('xkdg_hl_sphere', v || ''); } catch (e) {}
+    try { var m = document.getElementById('hl-sph'); if (m) m.value = v || ''; Array.prototype.forEach.call(document.querySelectorAll('.hl-cmt-sph'), function (x) { x.value = v || ''; }); } catch (e) {}
+    try { if (typeof root.xkdgHLSphereSync === 'function') root.xkdgHLSphereSync(v || ''); } catch (e) {}
+  }
+  var LANG_NAME = { it: 'Italian', en: 'English', fr: 'French', de: 'German', es: 'Spanish', pt: 'Portuguese', vi: 'Vietnamese', zh: 'Chinese' };
+  function comment(iso, btn) {
+    var box = btn && btn.closest ? btn.closest('.hl-cmt') : null; if (!box) return;
+    var out = box.querySelector('.hl-cmt-out'), note = ((box.querySelector('.hl-cmt-note') || {}).value || '').trim();
+    function say(t, col) { out.style.display = 'block'; out.style.color = col || '#222'; out.textContent = t; }
+    if (typeof root.XKDGAIOneShot !== 'function') { say('The Assistant is not available on this device.', '#c62828'); return; }
+    var cur = H().currentChart && H().currentChart(), A = H().chartA ? H().chartA() : { err: 'birth' };
+    var open = false; try { var ov = document.getElementById('hl-overlay'); open = !!(ov && ov.style.display !== 'none' && ov.offsetParent !== null); } catch (e) {}
+    if (open && cur && cur.c && A.c && (cur.c.date !== A.c.date || cur.c.time !== A.c.time)) { say('The comment reads Person A (' + A.c.name + '). Load this person as Person A to comment this chart.', '#c62828'); return; }
+    var D; try { D = aiDay(iso, null, true); } catch (e) { D = { error: String(e && e.message || e) }; }
+    if (!D || D.error) { say((D && D.error) || 'No reading for this day.', '#c62828'); return; }
+    try { delete D.person; delete D.alarms_next_30_days; } catch (e) {}
+    var sph = D.sphere_of_life && D.sphere_of_life.chosen ? D.sphere_of_life.chosen : 'General (no sphere chosen: read the day as a whole)';
+    var lg = 'English'; try { lg = LANG_NAME[String(navigator.language || 'en').slice(0, 2).toLowerCase()] || 'English'; } catch (e) {}
+    var sys = CMT_SYS + '9. Language: write in the language of the NOTE; when there is no note, write in ' + lg + '.';
+    var txt = 'SPHERE: ' + sph + '\nNOTE: ' + (note || '(none)') + '\nFACTS OF THE DAY ' + iso + ':\n' + JSON.stringify(D);
+    btn.disabled = true; btn.style.opacity = '0.6'; say('Reading the day…', '#777');
+    var done = function () { btn.disabled = false; btn.style.opacity = '1'; };
+    try {
+      root.XKDGAIOneShot(sys, txt, 1400, { onText: function (t) { if (t) say(t); } })
+        .then(function (t) { say(String(t || '').trim() || 'Empty reply.'); done(); })
+        .catch(function (e) { say('The Assistant did not answer: ' + String(e && e.message || e), '#c62828'); done(); });
+    } catch (e) { say('The Assistant did not answer: ' + String(e && e.message || e), '#c62828'); done(); }
+  }
   function cfFilm(chart, g) { return sphW(g.Pe, function () { return cfFilm_(chart, g); }); }
   function cfFilm_(chart, g) {
-    var p = g.th.p, dh = p.daily, me = g.th.pers, L = g.F.lines, ln = function (k, lbl) { var o = L[k]; return '<div style="' + S_ + '"><b>' + lbl + '</b> · ' + o.n + ' ' + esc(U().hexName ? U().hexName(o.n) : '') + ' line ' + o.l + ' ' + o.b + ' ' + relTag(o.r) + (o.s > 0 ? ' · favourable' : o.s < 0 ? ' · unfavourable' : ' · neutral') + '<br><i>«' + esc(cfStmt(o.n, o.l)) + '»</i></div>'; };
+    var sphOn = !!(U().sphGet && U().sphGet()), drawn = { d: 1, s2: 1 };   // action and outcome are drawn above: with a sphere the drawing carries their comment
+    var p = g.th.p, dh = p.daily, me = g.th.pers, L = g.F.lines, ln = function (k, lbl) { var o = L[k]; return '<div style="' + S_ + '"><b>' + lbl + '</b> · ' + o.n + ' ' + esc(U().hexName ? U().hexName(o.n) : '') + ' line ' + o.l + ' ' + o.b + ' ' + relTag(o.r) + (o.s > 0 ? ' · favourable' : o.s < 0 ? ' · unfavourable' : ' · neutral') + '<br><i>«' + esc(cfStmt(o.n, o.l)) + '»</i></div>' + (sphOn && drawn[k] ? '' : cmtFixed(o.n, o.l, me, chart && chart.male)); };
     var hr = g.hours && g.hours.length ? g.hours[0] : g.hours && g.hours.actor ? g.hours.actor : null;
     return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:4px 0;">' + cfBazi(hr, g.Pe)
       + '<div style="display:flex;flex-wrap:wrap;">' + (U().cycleHexSvg ? '<div style="flex:1;min-width:130px;">' + U().cycleHexSvg(dh.block, dh.line, null, me) + '</div><div style="flex:1;min-width:130px;">' + U().cycleHexSvg(dh.hex, dh.line, null, me) + '</div>' : '') + '</div>'
       + '<div style="font-size:10px;color:#999;">Left: block hexagram with the day line (action; the actor is its line ' + dh.lord + '). Right: day hexagram (outcome).</div>'
-      + ln('lord', 'Actor') + ln('d', 'Action') + ln('s2', 'Outcome') + (function () { var lg = legacyOfDay(g.F, g.th); return lg ? '<div style="' + S_ + 'color:#5e35b1;margin-top:3px;">📜 ' + esc(lg.text) + '</div>' : ''; })() + notesHtml(g.F, g.th, S_ + 'margin-top:3px;') + '</div>';
+      + ln('lord', 'Actor') + ln('d', 'Action') + ln('s2', 'Outcome') + (function () { var lg = legacyOfDay(g.F, g.th); return lg ? '<div style="' + S_ + 'color:#5e35b1;margin-top:3px;">📜 ' + esc(lg.text) + '</div>' : ''; })() + notesHtml(g.F, g.th, S_ + 'margin-top:3px;') + cmtBox(isoDay(g.date)) + '</div>';
   }
   function cfResults(chart, days) {
     var ok = days.filter(function (g) { return g.ok; }), h = '';
@@ -1593,6 +1658,7 @@
       + lv('4 · Same line in the day hexagram — outcome', LK.s2, dh.hex, dP)
       + dcH
       + hoursHtml(th, me)
+      + cmtBox(iso)
       + '<div style="font-size:10px;color:#999;line-height:1.5;">He Luo raises or lowers days already favourable for XKDG (month, block, day only; from −3 to +3). The texts show the shape of the day — also the price of a success — not a plus or a minus. Years and months: see the He Luo chart reading.</div>';
     return h;
   }
@@ -2086,5 +2152,5 @@
     } catch (e) {}
     return out;
   }
-  root.XKDGHeluoDS = { xkVar: xkVar, xkRels: xkRels, motherLines: motherLines, motherLineDate: motherLineDate, REL_NAME: REL_NAME, motherOf: motherOf, xkMother: xkMother, xkMotherBond: xkMotherBond, xkPts: xkPts, xkCorrectHead: xkCorrectHead, aiDay: aiDay, aiYears: aiYears, notesOfDay: notesOfDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
+  root.XKDGHeluoDS = { comment: comment, cmtSphere: cmtSphere, cmtBox: cmtBox, cmtFixed: cmtFixed, xkVar: xkVar, xkRels: xkRels, motherLines: motherLines, motherLineDate: motherLineDate, REL_NAME: REL_NAME, motherOf: motherOf, xkMother: xkMother, xkMotherBond: xkMotherBond, xkPts: xkPts, xkCorrectHead: xkCorrectHead, aiDay: aiDay, aiYears: aiYears, notesOfDay: notesOfDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
 })(typeof window !== 'undefined' ? window : globalThis);

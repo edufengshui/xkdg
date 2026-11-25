@@ -136,10 +136,17 @@ function heluoBlock(hl, t) {
   const fav = o => (o.s > 0 ? 'favourable' : o.s < 0 ? 'unfavourable' : 'neutral');
   const favC = o => (o.s > 0 ? '#2e7d32' : o.s < 0 ? '#c62828' : '#777');
   const id = o => o.n + ' ' + o.name + ' line ' + o.l + ' ' + o.b;
+  // comment to the text: the reading already written in the app for that line, in the sphere chosen in the He Luo
+  // window (General when none), on the side the time of today gives it (Edu 25/11/2026)
+  const cm = o => { const c = o.cmt; if (!c || !(c.strong || c.meaning)) return null;
+    const body = c.side > 0 ? c.strong : c.side < 0 ? c.weak : (c.strong ? 'With the time in favour: ' + c.strong + ' Against: ' + c.weak : '');
+    return { head: c.sphere ? c.relation + ' = ' + c.meaning + '.' + (c.off ? ' Read the line about this, not about ' + c.off + '.' : '') : '', body: body }; };
+  const cmH = o => { const c = cm(o); return c ? '<div style="margin:3px 0 0;padding:4px 8px;background:#fff8e1;border-left:3px solid #f9a825;color:#333;">💬 ' + (c.head ? '<b>' + esc(c.head) + '</b>' + (c.body ? '<br>' : '') : '') + esc(c.body) + '</div>' : ''; };
+  const cmX = o => { const c = cm(o); return c ? '    > ' + [c.head, c.body].filter(Boolean).join(' ') + '\n' : ''; };
   const row = (lbl, o, what) => '<div style="margin-top:7px;"><b style="color:#4527a0;">' + esc(lbl) + '</b> <span style="color:#888;font-size:11px;">' + esc(what) + '</span><br>' +
-    esc(id(o)) + ' · <b style="color:' + (HL_RC[o.rel] || '#333') + ';">' + esc(o.rel) + '</b>' + (o.who ? ' <span style="color:#666;">(' + esc(o.who) + ')</span>' : '') +
-    ' · <b style="color:' + favC(o) + ';">' + fav(o) + '</b>' + (o.timely ? ' · timely' : '') + '<br><i>«' + esc(o.text) + '»</i></div>';
-  const rowX = (lbl, o) => '  ' + lbl + ': ' + id(o) + ' · ' + o.rel + (o.who ? ' (' + o.who + ')' : '') + ' · ' + fav(o) + (o.timely ? ' · timely' : '') + '\n    «' + o.text + '»\n';
+    esc(id(o)) + ' · <b style="color:' + (HL_RC[o.rel] || '#333') + ';">' + esc(o.rel) + '</b>' + (o.who && !(o.cmt && o.cmt.sphere) ? ' <span style="color:#666;">(' + esc(o.who) + ')</span>' : '') +
+    ' · <b style="color:' + favC(o) + ';">' + fav(o) + '</b>' + (o.timely ? ' · timely' : '') + '<br><i>«' + esc(o.text) + '»</i>' + cmH(o) + '</div>';
+  const rowX = (lbl, o) => '  ' + lbl + ': ' + id(o) + ' · ' + o.rel + (o.who && !(o.cmt && o.cmt.sphere) ? ' (' + o.who + ')' : '') + ' · ' + fav(o) + (o.timely ? ' · timely' : '') + '\n    «' + o.text + '»\n' + cmX(o);
   const bg = [['Cycle', hl.cycle], ['Year', hl.annual], ['Year, line of the month', hl.annual_month], ['Month', hl.month]].filter(z => z[1]);
   const notes = [].concat(hl.prevalence.map(p => 'Prevalence: ' + p), hl.year_clash, hl.day_clash, hl.notes, hl.legacy ? [hl.legacy] : [], hl.levels);
   // The three Luck in the hexagrams of today (Edu 25/11/2026: «Li è il mio Fame, non c'è scritto»): where each Luck
@@ -163,13 +170,13 @@ function heluoBlock(hl, t) {
   const col = (lbl, gz) => '<td style="text-align:center;padding:0 8px 0 0;font-size:11px;color:#777;">' + lbl + '<div style="font-size:16px;color:#222;line-height:1.25;">' + (gz ? esc(gz.charAt(0)) + '<br>' + esc(gz.charAt(1)) : '·<br>·') + '</div></td>';
   const mB = {}; mB[hl.actor.l] = '#6a1b9a'; mB[hl.action.l] = '#c62828'; const mD = {}; mD[hl.outcome.l] = '#c62828';
   let h = '<div style="background:#f7f3ff;border:1px solid #b39ddb;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:13px;">' +
-    '<b style="color:#4527a0;font-size:14px;">☯ He Luo · ' + esc(dlabel(hl.date, t)) + '</b>' +
+    '<b style="color:#4527a0;font-size:14px;">☯ He Luo · ' + esc(dlabel(hl.date, t)) + '</b> <span style="color:#666;font-size:12px;">· ' + esc(hl.sphere || 'General') + '</span>' +
     '<table style="border-collapse:collapse;margin-top:6px;"><tr>' +
     '<td style="vertical-align:top;padding-right:14px;"><table style="border-collapse:collapse;"><tr>' + col('Day', hl.bazi.day) + col('Month', hl.bazi.month) + col('Year', hl.bazi.year) + '</tr></table></td>' +
     '<td style="vertical-align:top;padding-right:14px;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Block ' + hl.actor.n + ' ' + esc(hl.actor.name) + '</div>' + hlHex(hl.block_yy, mB) + '</td>' +
     '<td style="vertical-align:top;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Day ' + hl.outcome.n + ' ' + esc(hl.outcome.name) + '</div>' + hlHex(hl.day_yy, mD) + '</td></tr></table>' +
     row('Actor', hl.actor, 'who moves the day (Lord of the block)') + row('Action', hl.action, 'what is done (day line)') + row('Outcome', hl.outcome, 'how it ends (day hexagram)');
-  let x = 'He Luo · ' + dlabel(hl.date, t) + '\n  Day ' + (hl.bazi.day || '') + ' · Month ' + (hl.bazi.month || '') + ' · Year ' + (hl.bazi.year || '') + '\n' +
+  let x = 'He Luo · ' + dlabel(hl.date, t) + ' · ' + (hl.sphere || 'General') + '\n  Day ' + (hl.bazi.day || '') + ' · Month ' + (hl.bazi.month || '') + ' · Year ' + (hl.bazi.year || '') + '\n' +
     '  Block ' + hl.actor.n + ' ' + hl.actor.name + '\n' + hlTxt(hl.block_yy, (function () { const m = {}; m[hl.actor.l] = 'actor'; m[hl.action.l] = (m[hl.action.l] ? m[hl.action.l] + ', ' : '') + 'action'; return m; })()) +
     '  Day ' + hl.outcome.n + ' ' + hl.outcome.name + '\n' + hlTxt(hl.day_yy, (function () { const m = {}; m[hl.outcome.l] = 'outcome'; return m; })()) +
     rowX('Actor', hl.actor) + rowX('Action', hl.action) + rowX('Outcome', hl.outcome);
@@ -508,7 +515,18 @@ async function main() {
       // (HELUO_OWNER_GENDER) unless it says "heluo": false. Its own process, so the hours above do not change.
       try {
         const hg = rec._sub ? null : (rec.heluo === 'M' || rec.heluo === 'F') ? rec.heluo : (rec.heluo === false ? null : (rec._owner ? HELUO_OWNER_GENDER : null));
-        if (hg && rec.birth_date && rec.birth_time) { const d3 = run(loc.tz, { heluo: hg, heluo_only: true, skip_hours: true, days: 1 }); data.heluo = d3.heluo || null; if (!d3.heluo) console.log(tag + ': He Luo not computed'); }
+        // sphere of the comments: the one chosen in the He Luo window (the app sends it to the Worker, ?set_pref);
+        // else "sphere" in the line of the secret; else General
+        let sph = typeof rec.sphere === 'string' ? rec.sphere : '', vr = typeof rec.variant === 'string' ? rec.variant : '';
+        if (hg && rec._owner && rec.shelly && rec.shelly.url && rec.shelly.token) {
+          try { const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 15000);
+            const rs = await fetch(String(rec.shelly.url).replace(/\/+$/, '') + '?get_pref&token=' + encodeURIComponent(rec.shelly.token), { method: 'POST', signal: ctl.signal }); clearTimeout(tm);
+            const jp = await rs.json().catch(() => null);
+            if (jp && jp.action === 'get_pref' && jp.pref && typeof jp.pref.sphere === 'string') { sph = jp.pref.sphere; vr = String(jp.pref.variant || ''); }
+          } catch (ePf) {}
+        }
+        sph = /^[a-z]{0,20}$/.test(sph) ? sph : ''; vr = /^[A-Za-z0-9_-]{0,20}$/.test(vr) ? vr : '';
+        if (hg && rec.birth_date && rec.birth_time) { const d3 = run(loc.tz, { heluo: hg, heluo_only: true, skip_hours: true, days: 1, sphere: sph, variant: vr }); data.heluo = d3.heluo || null; if (!d3.heluo) console.log(tag + ': He Luo not computed'); }
       } catch (eHl) { data.heluo = null; console.log(tag + ': He Luo not computed'); }
       const msg = build(rec, data, loc);
       const n = data.days.reduce((s, d) => s + d.hours.length, 0);

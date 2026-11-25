@@ -41,6 +41,9 @@ recipient's city, with daylight saving handled day by day.
   the line texts, hours, background, notes). Only for the owner's line (the line whose `shelly` token reads the
   subscribers) or a line of the secret with `"heluo": "M"` / `"F"`; `"heluo": false` turns it off. Never for the lines
   the students send from the app. It needs `birth_time`.
+  Under the texts of actor, action and outcome there is the **comment** already written in the app for that line, in the
+  sphere of life chosen in the He Luo window: the app sends the choice to the Worker (`?set_pref`, Worker of 25/11/2026 or
+  later) and digest.js reads it (`?get_pref`). With an older Worker: `"sphere": "wealth"` in the line, else General.
 - One object per person, separated by commas.
 
 ## Students subscribe by themselves (session 41)
