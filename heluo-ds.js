@@ -1373,6 +1373,8 @@
     + '5. Use the notes of the day, the clashes, a natal void that comes out and the film hours only when they add something; give the hours as they are written in the facts, saying they are true solar time.\n'
     + '6. NOTE with a fact: explain the fact with the texts, as literally as the images allow; say which line speaks of it and say plainly what does not fit. Do not force a match. NOTE with an intention: say whether the day suits it, in which hour, and what to watch.\n'
     + '7. Never invent rules, stars or meanings that are not in the facts. Do not propose other dates. Follow reading_rules in the facts when they do not contradict these rules.\n'
+    // Rule of Edu, 26/11/2026 (the day shut at home by the snow, 55 line 6): «a volte bisogna considerare che il testo possa descrivere una situazione oggettiva».
+    + '7b. A line text is not always advice or a risk to avoid: it can simply DESCRIBE an objective situation of that day. When the image is concrete (a house shut, a journey, a meeting, something lost or received, someone arriving), give it also as a plain possible fact, not only as a warning; with a NOTE of a fact, check first whether a text describes that fact literally.\n'
     + '8. Close with one short line: this is a reading of one day, not a certainty.\n';
   function cmtBox(iso) {
     if (typeof root.XKDGAIOneShot !== 'function') return '';
