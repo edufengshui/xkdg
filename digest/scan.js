@@ -162,7 +162,7 @@ if (HL) {
       const bz = {}; (r.bazi_of_the_day_column_order || []).forEach(x => { const p = String(x).split(' '); bz[p[0].toLowerCase()] = p[1]; });
       const hrs = (r.hours || []).filter(h => h.role || /\(best/.test(h.relieves_prevalence || '')).map(h => ({ pillar: h.pillar, window: win(String(h.pillar).charAt(1)),
         n: h.hexagram, l: h.line, b: h.branch, rel: h.relation, s: h.text_score, text: h.text || '', role: h.role || '', relief: h.relieves_prevalence || '' }));
-      out.heluo = { date: P.start, bazi: bz, luck: luck, age: r.age_heluo, phase: (r.cycle || {}).phase || '',
+      out.heluo = { date: P.start, gender: HL, bazi: bz, luck: luck, age: r.age_heluo, phase: (r.cycle || {}).phase || '',
         cycle: ln(sc.cycle), annual: ln(sc.annual), annual_month: ln(bd.annual_line_of_the_month), month: ln(bd.month_line),
         actor: cmt(ln(F.actor)), action: cmt(ln(ac.day_line)), outcome: cmt(ln(ac.outcome)),
         sphere: (function () { try { const k = UI.sphGet ? UI.sphGet() : ''; const E = k && w.XKDG_HELUO_READINGS.spheres.resolve(k, male, w.localStorage.getItem('xkdg_xk_variant_' + k) || ''); return E ? E.icon + ' ' + E.label + (E.variantLabel ? ' \u00b7 ' + E.variantLabel : '') : ''; } catch (e) { return ''; } })(),

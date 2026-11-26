@@ -131,7 +131,62 @@ function hlHex(yy, marks) {            // drawn hexagram, email-safe: line 6 on 
   return h + '</table>';
 }
 function hlTxt(yy, marks) { if (!yy || yy.length !== 6) return ''; let o = ''; for (let l = 6; l >= 1; l--) o += '    ' + (yy[l - 1] ? '━━━━━' : '━━ ━━') + (marks && marks[l] ? '  ← ' + marks[l] : '') + '\n'; return o; }
-function heluoBlock(hl, t) {
+// SHORT He Luo box (Edu 26/11/2026: «troppo complicata, si finisce col non capire niente»). The default from now on:
+// three plain rows — who moves the day, what is done, how it ends — each with what it is about, good or not, and ONE
+// comment in plain words; then one line for the Luck, one per hour that matters, and at most two warnings.
+// No background, no clashes, no flows between the levels. The long box stays with "heluo_full": true in the line.
+function heluoShort(hl, t) {
+  if (!hl || !hl.actor || !hl.action || !hl.outcome) return { h: '', x: '' };
+  const mark = o => (o.s > 0 ? '✓ favourable' : o.s < 0 ? '✗ unfavourable' : 'neutral');
+  const col = o => (o.s > 0 ? '#2e7d32' : o.s < 0 ? '#c62828' : '#777');
+  const about = o => { const c = o.cmt; return String((c && c.sphere && c.meaning) ? c.meaning : (o.who || ''))
+      .replace(/(,| and) the partner \((man|woman)\)/g, (m, j, g) => ((g === 'man') === (hl.gender !== 'F')) ? j + ' the partner' : ''); };   // «the partner» only for whom it holds
+  // one side only: the side the time gives; when the time does not decide, the side of the text
+  const say = o => { const c = o.cmt; if (!c) return ''; return (c.side > 0 || (c.side === 0 && o.s >= 0)) ? (c.strong || '') : (c.weak || c.strong || ''); };
+  const rows = [['Who moves the day', hl.actor], ['What is done', hl.action], ['How it ends', hl.outcome]];
+  // Luck: only the block and the day; a trigram that is one of the three Luck counts as that Luck
+  let luck = [];
+  if (hl.luck) {
+    const good = {}, bad = {}; [['heaven', 'Heaven'], ['earth', 'Earth'], ['fame', 'Fame']].forEach(k => { if (hl.luck[k[0]]) good[hl.luck[k[0]]] = k[1] + ' Luck'; });
+    [['heaven', 'Heaven'], ['earth', 'Earth'], ['fame', 'Fame']].forEach(k => { const o = (hl.luck.opposite || {})[k[0]]; if (o && !good[o]) bad[o] = 'opposite of ' + k[1] + ' Luck'; });
+    const seen = {};
+    [['the block', hl.actor], ['the day', hl.outcome]].forEach(L => [L[1].up, L[1].lo].forEach(tg => { const nm = good[tg] || bad[tg]; if (!nm) return; const k = nm + ' (' + tg + ')'; (seen[k] = seen[k] || { good: !!good[tg], at: [] }); if (seen[k].at.indexOf(L[0]) < 0) seen[k].at.push(L[0]); }));
+    luck = Object.keys(seen).map(k => ({ good: seen[k].good, txt: k + ' in ' + seen[k].at.join(' and ') }));
+  }
+  const hrs = (hl.hours || []).filter(o => o.role);     // only the hours with a part in the film
+  const hourTxt = o => String(o.role).replace(/\s*\([^)]*\)/g, '').replace(/ACTOR ENTERS THE SCENE/, 'actor enters the scene').replace(/the ANSWER, /, '').replace(/\s+/g, ' ').trim();
+  const warn = [].concat((hl.notes || []).filter(n => /^Six Clashes/.test(n)).map(n => n.replace(/^Six Clashes hexagram on [^:]*:\s*/, 'Six Clashes: ')), hl.legacy ? [hl.legacy] : []).slice(0, 2);
+  const c2 = (lbl, gz) => '<td style="text-align:center;padding:0 8px 0 0;font-size:11px;color:#777;">' + lbl + '<div style="font-size:16px;color:#222;line-height:1.25;">' + (gz ? esc(gz.charAt(0)) + '<br>' + esc(gz.charAt(1)) : '·<br>·') + '</div></td>';
+  const mB = {}; mB[hl.actor.l] = '#6a1b9a'; mB[hl.action.l] = '#c62828'; const mD = {}; mD[hl.outcome.l] = '#c62828';
+  const ttl = 'He Luo' + (hl.who ? ' of ' + hl.who : '') + ' · ' + dlabel(hl.date, t) + (hl.sphere ? ' · ' + hl.sphere : '');
+  let h = '<div style="background:#f7f3ff;border:1px solid #b39ddb;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:14px;">' +
+    '<b style="color:#4527a0;font-size:15px;">☯ ' + esc(ttl) + '</b>' +
+    '<table style="border-collapse:collapse;margin-top:6px;"><tr>' +
+    '<td style="vertical-align:top;padding-right:14px;"><table style="border-collapse:collapse;"><tr>' + c2('Day', hl.bazi.day) + c2('Month', hl.bazi.month) + c2('Year', hl.bazi.year) + '</tr></table></td>' +
+    '<td style="vertical-align:top;padding-right:14px;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Block ' + hl.actor.n + ' ' + esc(hl.actor.name) + '</div>' + hlHex(hl.block_yy, mB) + '</td>' +
+    '<td style="vertical-align:top;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Day ' + hl.outcome.n + ' ' + esc(hl.outcome.name) + '</div>' + hlHex(hl.day_yy, mD) + '</td></tr></table>';
+  let x = ttl + '\n';
+  rows.forEach(r => { const o = r[1], sy = say(o);
+    h += '<div style="margin-top:10px;"><b style="color:#4527a0;">' + r[0] + '</b> · <b style="color:' + col(o) + ';">' + mark(o) + '</b><br>' +
+      '<b style="color:' + (HL_RC[o.rel] || '#333') + ';">' + esc(o.rel) + '</b>' + (about(o) ? ': ' + esc(about(o)) : '') +
+      (sy ? '<div style="margin:3px 0 0;padding:5px 8px;background:#fff8e1;border-left:3px solid #f9a825;color:#222;">' + esc(sy) + '</div>' : '') +
+      '<div style="font-size:11px;color:#888;margin-top:2px;"><i>«' + esc(o.text) + '»</i> · ' + o.n + ' line ' + o.l + ' ' + esc(o.b) + '</div></div>';
+    x += '  ' + r[0] + ' · ' + mark(o) + '\n    ' + o.rel + (about(o) ? ': ' + about(o) : '') + '\n' + (sy ? '    > ' + sy + '\n' : '') + '    «' + o.text + '» (' + o.n + ' line ' + o.l + ' ' + o.b + ')\n';
+  });
+  if (luck.length) {
+    h += '<div style="margin-top:10px;"><b style="color:#4527a0;">Luck</b> ' + luck.map(l => '<span style="color:' + (l.good ? '#2e7d32' : '#c62828') + ';">' + (l.good ? '☘ ' : '✖ ') + esc(l.txt) + '</span>').join(' · ') + '</div>';
+    x += '  Luck: ' + luck.map(l => (l.good ? '+ ' : '- ') + l.txt).join(' · ') + '\n';
+  }
+  if (hrs.length) {
+    h += '<div style="margin-top:10px;"><b style="color:#4527a0;">Hours</b>' + hrs.map(o => '<div style="margin-top:2px;"><b style="white-space:nowrap;">' + esc(o.window) + '</b> ' + esc(hourTxt(o)) + '</div>').join('') + '</div>';
+    x += '  Hours\n' + hrs.map(o => '    ' + o.window + ' ' + hourTxt(o)).join('\n') + '\n';
+  }
+  if (warn.length) { h += warn.map(n => '<div style="margin-top:8px;color:#ad1457;">⚠ ' + esc(n) + '</div>').join(''); x += warn.map(n => '  ! ' + n).join('\n') + '\n'; }
+  return { h: h + '</div>', x: x + '\n' };
+}
+function heluoBlock(hl, t, full) {
+  if (!full) return heluoShort(hl, t);
+
   if (!hl || !hl.actor || !hl.action || !hl.outcome) return { h: '', x: '' };
   const fav = o => (o.s > 0 ? 'favourable' : o.s < 0 ? 'unfavourable' : 'neutral');
   const favC = o => (o.s > 0 ? '#2e7d32' : o.s < 0 ? '#c62828' : '#777');
@@ -237,7 +292,7 @@ function build(rec, data, loc) {
     X += (aq.anyBad ? '!! ' : '') + aq.title + '\n' + aq.list.map(x => '  ' + x.text).join('\n') + '\n\n';
   }
   { const sb = switchBlock(data.aquarium, rec); H += sb.h; X += sb.x; }
-  { const hb = heluoBlock(data.heluo, t); H += hb.h; X += hb.x; }
+  { const hb = heluoBlock(data.heluo, t, rec.heluo_full === true); H += hb.h; X += hb.x; }
   { const qb = qdBlock(data.qmdj_day, t); H += qb.h; X += qb.x; }
   if (best.length) {
     H += '<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:8px 12px;margin-bottom:14px;"><b>⭐ ' + esc(t.best) + '</b><br>' +

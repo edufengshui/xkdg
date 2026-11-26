@@ -41,6 +41,9 @@ recipient's city, with daylight saving handled day by day.
   the line texts, hours, background, notes). Only for the owner's line (the line whose `shelly` token reads the
   subscribers) or a line of the secret with `"heluo": "M"` / `"F"`; `"heluo": false` turns it off. Never for the lines
   the students send from the app. It needs `birth_time`.
+  The box is SHORT by default (26/11/2026): who moves the day, what is done, how it ends, each with one comment in plain
+  words, then Luck, hours and at most two warnings. `"heluo_full": true` in the line gives the long box (background,
+  clashes, notes).
   A line with several addresses: the He Luo of the line goes to the FIRST address only. A second reader gets their own
   reading with `"heluo_for": { "second@address": { "name": "…", "birth_date": "YYYY-MM-DD", "birth_time": "HH:MM",
   "gender": "F" } }` in the line (optional `"sphere"`), and no He Luo box without it. The rest of the email is the same.
