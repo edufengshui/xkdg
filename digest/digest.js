@@ -30,6 +30,7 @@ const T = {
 const ICON = { health: '🩺', career: '🏆', wealth: '💰', relationship: '❤️', journey: '✈️', speak: '🗣️', legal: '⚖️' };
 const FSICON = { fountain: '\u26F2', aquarium: '\uD83D\uDC20', water: '\uD83D\uDCA7', bed: '\uD83D\uDECF\uFE0F', desk: '\uD83E\uDE91' };
 const PORDER = ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'];
+const HELUO_OWNER_LANG = 'it';     // the owner reads the «Commento» in Italian ("heluo_lang" in the line changes it)
 const HELUO_OWNER_GENDER = 'M';   // the owner of the app (Edu): the He Luo chart needs the gender, the secret line has none
 
 // Two zones are interchangeable when their UTC offsets match all year (Vienna = Rome).
@@ -184,7 +185,85 @@ function heluoShort(hl, t) {
   if (warn.length) { h += warn.map(n => '<div style="margin-top:8px;color:#ad1457;">⚠ ' + esc(n) + '</div>').join(''); x += warn.map(n => '  ! ' + n).join('\n') + '\n'; }
   return { h: h + '</div>', x: x + '\n' };
 }
+// He Luo box as Edu wants it (26/11/2026, after two tries he could not read: «Così va bene. Prima però riporta il testo
+// delle linee così come sono e poi scrivi "Commento" e metti il tuo commento»): the three line texts as they are, then
+// «Commento»: a short reading in plain words written every morning by the Assistant (the xkdg-ai Worker, the same one
+// the app's chat uses), in the reader's language. If the Assistant does not answer, the short box (heluoShort) is used.
+const HL_L = {
+  it: { texts: 'Testi delle linee', who: 'Chi muove la giornata', what: 'Cosa si fa', end: 'Come finisce', comment: 'Commento', line: 'linea' },
+  en: { texts: 'Line texts', who: 'Who moves the day', what: 'What is done', end: 'How it ends', comment: 'Comment', line: 'line' }
+};
+const HL_LANG = { it: 'Italian', en: 'English', fr: 'French', de: 'German', es: 'Spanish', vi: 'Vietnamese' };
+const AI_URL = process.env.XKDG_AI_URL || 'https://xkdg-ai.decumano16.workers.dev';
+const HL_SYS = [
+  'You write the daily He Luo Li Shu note inside a morning email. You receive the FACTS of today for one person, computed by an app (JSON). Write a short reading of the day that a person who knows nothing of the method understands at once.',
+  'FORMAT, exactly:',
+  'First one sentence that says what kind of day it is (good for what, less good for what).',
+  'Then an empty line, then 3 to 5 bullets, each: "- **Label of two to four words.** One or two short sentences."',
+  'The bullets, in this order, only those that have something to say: how the day starts (who_moves_the_day); what to do (what_is_done); what to watch at the end (how_it_ends); the hours (only if "hours" is not empty: give the clock times exactly as written and say what can happen then); the luck (only if "luck_today" is not empty).',
+  'RULES:',
+  '1. Plain everyday words and concrete advice (what to do, what to avoid, what not to chase). Speak to the reader directly, informal "you".',
+  '2. No hexagram numbers or names, no line numbers, no Chinese characters, no technical words (block, cycle, clash, void, trine, timely). Do not use the words Wealth, Ghost, Parent, Children, Brothers: say what they mean in life, taken from "about" (money and clients; authority, rules and offices; documents, contracts and support; projects and what one produces; colleagues, friends and competitors). You may name the Luck (Fame Luck, Heaven Luck, Earth Luck).',
+  '3. Each of the three lines has a text (an old image), text_sign (favourable, neutral, unfavourable) and sometimes a ready comment (written_comment). Turn the image into what it means today for the subject of that line. A favourable line is help; an unfavourable one is what to watch. Do not quote the texts: the reader has them just above.',
+  '4. Use "notes" only to adjust the tone: GIVES WAY means that thing weakens or breaks today; COMES ALIVE means it acts strongly; Six Clashes means sudden moves and things that were tied coming apart. The background (cycle, year, month) is only a backdrop: at most half a sentence.',
+  '5. Never invent facts, events or rules that are not in the data. No greeting, no title, no closing remark, no disclaimer. At most 120 words in all.'
+].join('\n');
+async function heluoComment(hl, lang) {
+  if (!hl || !hl.actor || !hl.action || !hl.outcome) return null;
+  const sign = o => (o.s > 0 ? 'favourable' : o.s < 0 ? 'unfavourable' : 'neutral');
+  const about = o => String((o.cmt && o.cmt.sphere && o.cmt.meaning) ? o.cmt.meaning : (o.who || '')).replace(/(,| and) the partner \((man|woman)\)/g, (m, j, g) => ((g === 'man') === (hl.gender !== 'F')) ? j + ' the partner' : '');
+  const say = o => { const c = o.cmt; if (!c) return ''; return (c.side > 0 || (c.side === 0 && o.s >= 0)) ? (c.strong || '') : (c.weak || c.strong || ''); };
+  const L = o => o ? { relation: o.rel, about: about(o), text: o.text, text_sign: sign(o), helped_by_the_time: !!o.timely, written_comment: say(o) } : undefined;
+  const lk = []; if (hl.luck) { const g = {}; [['heaven', 'Heaven Luck'], ['earth', 'Earth Luck'], ['fame', 'Fame Luck']].forEach(k => { if (hl.luck[k[0]]) g[hl.luck[k[0]]] = k[1]; });
+    [hl.actor.up, hl.actor.lo, hl.outcome.up, hl.outcome.lo].forEach(tg => { if (g[tg] && lk.indexOf(g[tg]) < 0) lk.push(g[tg]); }); }
+  const facts = { date: hl.date, reader: hl.gender === 'F' ? 'a woman' : 'a man', sphere_of_life: hl.sphere || 'General (the day as a whole)',
+    who_moves_the_day: L(hl.actor), what_is_done: L(hl.action), how_it_ends: L(hl.outcome),
+    background: { cycle: L(hl.cycle), year: L(hl.annual), month: L(hl.month) },
+    notes: [].concat((hl.prevalence || []).map(p => 'Prevalence: ' + p), hl.year_clash || [], hl.day_clash || [], hl.notes || [], hl.legacy ? [hl.legacy] : []).slice(0, 10),
+    luck_today: lk,
+    hours: (hl.hours || []).filter(o => o.role).map(o => ({ clock: o.window, what: String(o.role).replace(/\s*\([^)]*\)/g, '') })) };
+  const body = JSON.stringify({ max_tokens: 6000, system: HL_SYS + '\n6. Write in ' + (HL_LANG[lang] || 'English') + '.',
+    messages: [{ role: 'user', content: 'FACTS OF TODAY:\n' + JSON.stringify(facts) }] });
+  for (let n = 0; n < 2; n++) {
+    try {
+      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 90000);
+      const res = await fetch(AI_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, signal: ctl.signal }); clearTimeout(tm);
+      const d = await res.json().catch(() => null);
+      const txt = d && Array.isArray(d.content) ? d.content.map(c => (c && c.type === 'text') ? c.text : '').filter(Boolean).join('\n').trim() : '';
+      if (txt) return txt.slice(0, 2500);
+      heluoComment.lastError = d && d.error ? String((d.error.type || '') + ' ' + (d.error.message || d.error)).slice(0, 160) : ('HTTP ' + res.status);
+    } catch (e) { heluoComment.lastError = String(e && e.message || e).slice(0, 160); }
+  }
+  return null;
+}
+// the Assistant's text → HTML: a first sentence, then bullets «- **Label.** text»
+function hlCommentHtml(txt) {
+  const b = x => esc(x).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  return String(txt).split(/\n+/).map(x => x.trim()).filter(Boolean).map(x => /^[-•*]\s+/.test(x)
+    ? '<div style="margin:5px 0 0 0;padding-left:14px;text-indent:-14px;">• ' + b(x.replace(/^[-•*]\s+/, '')) + '</div>'
+    : '<div style="margin:4px 0 0;">' + b(x) + '</div>').join('');
+}
+function heluoPlain(hl, t) {
+  const lang = HL_L[hl.lang] ? hl.lang : 'en', W = HL_L[lang], tt = T[lang] || t;
+  const ttl = 'He Luo' + (hl.who ? ' · ' + hl.who : '') + ' · ' + dlabel(hl.date, tt) + (hl.sphere ? ' · ' + hl.sphere : '');
+  const c2 = (lbl, gz) => '<td style="text-align:center;padding:0 8px 0 0;font-size:11px;color:#777;">' + lbl + '<div style="font-size:16px;color:#222;line-height:1.25;">' + (gz ? esc(gz.charAt(0)) + '<br>' + esc(gz.charAt(1)) : '·<br>·') + '</div></td>';
+  const mB = {}; mB[hl.actor.l] = '#6a1b9a'; mB[hl.action.l] = '#c62828'; const mD = {}; mD[hl.outcome.l] = '#c62828';
+  const rows = [[W.who, hl.actor], [W.what, hl.action], [W.end, hl.outcome]];
+  let h = '<div style="background:#f7f3ff;border:1px solid #b39ddb;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:14px;">' +
+    '<b style="color:#4527a0;font-size:15px;">☯ ' + esc(ttl) + '</b>' +
+    '<table style="border-collapse:collapse;margin-top:6px;"><tr>' +
+    '<td style="vertical-align:top;padding-right:14px;"><table style="border-collapse:collapse;"><tr>' + c2(tt === T.it ? 'Giorno' : 'Day', hl.bazi.day) + c2(tt === T.it ? 'Mese' : 'Month', hl.bazi.month) + c2(tt === T.it ? 'Anno' : 'Year', hl.bazi.year) + '</tr></table></td>' +
+    '<td style="vertical-align:top;padding-right:14px;"><div style="font-size:11px;color:#777;margin-bottom:2px;">' + hl.actor.n + ' ' + esc(hl.actor.name) + '</div>' + hlHex(hl.block_yy, mB) + '</td>' +
+    '<td style="vertical-align:top;"><div style="font-size:11px;color:#777;margin-bottom:2px;">' + hl.outcome.n + ' ' + esc(hl.outcome.name) + '</div>' + hlHex(hl.day_yy, mD) + '</td></tr></table>' +
+    '<div style="margin-top:10px;"><b style="color:#4527a0;">' + W.texts + '</b></div>' +
+    rows.map(r => '<div style="margin-top:6px;"><span style="color:#666;font-size:12px;">' + r[0] + ' · ' + r[1].n + ' ' + esc(r[1].name) + ', ' + W.line + ' ' + r[1].l + '</span><br><i>«' + esc(r[1].text) + '»</i></div>').join('') +
+    '<div style="margin-top:12px;padding:8px 10px;background:#fff8e1;border-left:3px solid #f9a825;color:#222;line-height:1.45;"><b style="color:#4527a0;">' + W.comment + '</b>' + hlCommentHtml(hl.comment) + '</div></div>';
+  const x = ttl + '\n  ' + W.texts + '\n' + rows.map(r => '    ' + r[0] + ' · ' + r[1].n + ' ' + r[1].name + ', ' + W.line + ' ' + r[1].l + '\n      «' + r[1].text + '»').join('\n') +
+    '\n\n  ' + W.comment + '\n' + String(hl.comment).replace(/\*\*/g, '').split(/\n/).map(l => '    ' + l).join('\n') + '\n\n';
+  return { h: h, x: x };
+}
 function heluoBlock(hl, t, full) {
+  if (!full && hl && hl.comment && hl.actor && hl.action && hl.outcome) return heluoPlain(hl, t);
   if (!full) return heluoShort(hl, t);
 
   if (!hl || !hl.actor || !hl.action || !hl.outcome) return { h: '', x: '' };
@@ -537,6 +616,7 @@ async function main() {
   } catch (e) { console.log('subscribers from the app: not readable'); }
   if (!recs.length) { console.log('No recipients configured.'); process.exit(1); }
   const dry = !!process.env.DRY_RUN;
+  const testOwner = !dry && !!process.env.TEST_OWNER;        // "Run workflow" → test: only the owner's own email is sent
   let mailer = null;
   if (!dry) {
     if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) { console.log('Missing GMAIL_USER / GMAIL_APP_PASSWORD.'); process.exit(1); }
@@ -547,6 +627,7 @@ async function main() {
     const rec = recs[i], tag = 'recipient ' + (i + 1) + '/' + recs.length;
     try {
       if (rec.active === false) { console.log(tag + ': paused'); continue; }
+      if (testOwner && !rec._owner) { console.log(tag + ': skipped (test run)'); continue; }
       const c = CITIES[String(rec.city || 'vienna').toLowerCase()] || {};
       const loc = { lat: rec.lat != null ? +rec.lat : c.lat, lon: rec.lon != null ? +rec.lon : c.lon, tz: rec.tz || c.tz || 'Europe/Vienna', label: rec.city_label || c.label || rec.city || '' };
       if (!isFinite(loc.lat) || !isFinite(loc.lon)) throw new Error('unknown location');
@@ -599,7 +680,7 @@ async function main() {
           if (p && typeof p === 'object' && /^\d{4}-\d{2}-\d{2}$/.test(String(p.birth_date || '')) && /^\d{1,2}:\d{2}$/.test(String(p.birth_time || '')) && (p.gender === 'M' || p.gender === 'F')) {
             try { const d4 = run(loc.tz, { birth_date: p.birth_date, birth_time: p.birth_time, jiazi: undefined, heluo: p.gender, heluo_only: true, skip_hours: true, days: 1,
                 sphere: /^[a-z]{1,20}$/.test(String(p.sphere || '')) ? p.sphere : '', variant: '' });
-              h = d4.heluo || null; if (h) h.who = String(p.name || '').slice(0, 40); } catch (e4) { h = null; }
+              h = d4.heluo || null; if (h) { h.who = String(p.name || '').slice(0, 40); h.lang = HL_L[p.lang] ? p.lang : 'en'; } } catch (e4) { h = null; }
             if (!h) console.log(tag + ': He Luo of a second reader not computed');
           }
           if (h) sends.push({ to: [m], heluo: h }); else plain.push(m);
@@ -607,9 +688,19 @@ async function main() {
         if (plain.length) sends.push({ to: plain, heluo: null });
       } else sends.push({ to: mails, heluo: data.heluo || null });
       const n = data.days.reduce((s, d) => s + d.hours.length, 0);
+      // «Commento»: one request to the Assistant per reader with a He Luo (not for the long box). The line's own
+      // reader gets it in "heluo_lang" (the owner: Italian); a second reader in the "lang" of their entry (English).
+      let cmtN = 0, cmtErr = '';
       for (let k = 0; k < sends.length; k++) {
+        const hh = sends[k].heluo; if (!hh || rec.heluo_full === true || (testOwner && k > 0)) continue;
+        if (!hh.lang) hh.lang = HL_L[rec.heluo_lang] ? rec.heluo_lang : (rec._owner ? HELUO_OWNER_LANG : (HL_L[rec.lang] ? rec.lang : 'en'));
+        hh.comment = await heluoComment(hh, hh.lang); if (hh.comment) cmtN++; else cmtErr = heluoComment.lastError || 'no reply';
+      }
+      for (let k = 0; k < sends.length; k++) {
+        if (testOwner && k > 0) break;                       // test run: the owner's own email only
         data.heluo = sends[k].heluo;
         const msg = build(rec, data, loc);
+        if (testOwner) msg.subject = 'TEST \u00b7 ' + msg.subject;
         if (dry) {
           const dir = process.env.DRY_RUN_DIR || __dirname, nm = 'digest-' + (i + 1) + (k ? String.fromCharCode(97 + k) : '');
           fs.writeFileSync(path.join(dir, nm + '.html'), '<meta charset="utf-8">' + msg.html);
@@ -620,7 +711,8 @@ async function main() {
       }
       // counts only (the log is public): how many emails, how many carry a He Luo box, whether the sphere came from the app
       console.log(tag + ': ' + n + ' hours' + (sends.length > 1 ? ', ' + sends.length + ' emails' : '') +
-        (sends.some(x => x.heluo) ? ', He Luo in ' + sends.filter(x => x.heluo).length + (rec._sphApp ? ' (sphere from the app)' : '') : '') + (dry ? ' (dry run, not sent)' : ', sent'));
+        (sends.some(x => x.heluo) ? ', He Luo in ' + sends.filter(x => x.heluo).length + (rec._sphApp ? ' (sphere from the app)' : '') + ', comments written ' + cmtN + (cmtErr ? ' (Assistant: ' + cmtErr + ')' : '') : '') +
+        (dry ? ' (dry run, not sent)' : testOwner ? ', TEST sent to the first address only' : ', sent'));
     } catch (e) { failed++; console.log(tag + ': FAILED - ' + String(e.message || e).replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '<email>').slice(0, 200)); }
   }
   if (failed) process.exit(1);

@@ -13,6 +13,10 @@ on:
         description: 'Check only: compute everything, send no email'
         type: boolean
         default: false
+      test_owner:             # sends ONLY the owner's own email (first address), subject starting with TEST
+        description: 'Test: send only the owner his own email'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,5 +40,6 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           XKDG_DIGEST_RECIPIENTS: ${{ secrets.XKDG_DIGEST_RECIPIENTS }}
           DRY_RUN: ${{ inputs.check && '1' || '' }}
+          TEST_OWNER: ${{ inputs.test_owner && '1' || '' }}
           DRY_RUN_DIR: ${{ runner.temp }}
         run: node digest.js

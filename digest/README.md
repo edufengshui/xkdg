@@ -41,7 +41,11 @@ recipient's city, with daylight saving handled day by day.
   the line texts, hours, background, notes). Only for the owner's line (the line whose `shelly` token reads the
   subscribers) or a line of the secret with `"heluo": "M"` / `"F"`; `"heluo": false` turns it off. Never for the lines
   the students send from the app. It needs `birth_time`.
-  The box is SHORT by default (26/11/2026): who moves the day, what is done, how it ends, each with one comment in plain
+  The box (26/11/2026): the three line texts as they are, then **Commento**, a short reading in plain words written
+  every morning by the Assistant (xkdg-ai Worker, one request per reader; Italian for the owner, `"heluo_lang"` in the
+  line changes it; English for a second reader, `"lang"` in their `heluo_for` entry changes it). If the Assistant does
+  not answer, the short box below is used.
+  The fallback box is SHORT (26/11/2026): who moves the day, what is done, how it ends, each with one comment in plain
   words, then Luck, hours and at most two warnings. `"heluo_full": true` in the line gives the long box (background,
   clashes, notes).
   A line with several addresses: the He Luo of the line goes to the FIRST address only. A second reader gets their own
