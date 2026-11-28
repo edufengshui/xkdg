@@ -155,6 +155,7 @@ if (HL) {
           if (I) o.cmt = { sphere: I.sphere, icon: I.icon, relation: I.relation, meaning: I.meaning, off: I.off, side: I.side, strong: I.strong, weak: I.weak, hand: I.hand };
         } catch (e) {} finally { try { if (UI.sphTime) UI.sphTime(pv); } catch (e) {} }
         return o; };
+      const six = n => { try { return NJ[n].lines.map((l, i) => { let r = ''; try { const I = UI.sphereInfo && me ? UI.sphereInfo(n, i + 1, me, male, '') : null; r = (I && I.rel) || ''; } catch (e) {} return { b: l.branch || '', r: r }; }); } catch (e) { return null; } };
       const HS = G('HOUR_STARTS'), ST = w.XKDGSolarTime, [y, m, dd] = P.start.split('-').map(Number);
       const f2 = t => String(t.h).padStart(2, '0') + ':' + String(t.mi).padStart(2, '0');
       const win = br => { try { const i = '子丑寅卯辰巳午未申酉戌亥'.indexOf(br); if (i < 0) return '';
@@ -167,6 +168,8 @@ if (HL) {
         actor: cmt(ln(F.actor)), action: cmt(ln(ac.day_line)), outcome: cmt(ln(ac.outcome)),
         sphere: (function () { try { const k = UI.sphGet ? UI.sphGet() : ''; const E = k && w.XKDG_HELUO_READINGS.spheres.resolve(k, male, w.localStorage.getItem('xkdg_xk_variant_' + k) || ''); return E ? E.icon + ' ' + E.label + (E.variantLabel ? ' \u00b7 ' + E.variantLabel : '') : ''; } catch (e) { return ''; } })(),
         block_yy: F.actor ? yy(F.actor.hexagram) : null, day_yy: ac.outcome ? yy(ac.outcome.hexagram) : null,
+        // branch and relation (B C W G P, for the person of the day) of all six lines, for the drawings (Edu 28/11/2026)
+        block_ln: F.actor ? six(F.actor.hexagram) : null, day_ln: ac.outcome ? six(ac.outcome.hexagram) : null,
         prevalence: (r.prevalence || []).filter(x => x !== 'none'), levels: r.relations_between_levels || [],
         year_clash: sc.year_clash || [], day_clash: ac.day_clash || [], notes: r.notes_of_the_day || [],
         legacy: r.legacy_or_document || '', hours: hrs,

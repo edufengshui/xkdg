@@ -121,13 +121,16 @@ function switchBlock(aq, rec) {
 // Facts of the app's own reading (scan.js → XKDGHeluoDS.aiDay): who acts, what is done, how it ends, with the
 // line texts; the background; the notes of the day; the hours that matter. English only, like the He Luo window.
 const HL_RC = { Parent: '#6a1b9a', Wealth: '#2e7d32', Ghost: '#c62828', Children: '#1565c0', Brothers: '#555' };
-function hlHex(yy, marks) {            // drawn hexagram, email-safe: line 6 on top; marks = { line: colour }
+const HL_RL = { P: '#6a1b9a', W: '#2e7d32', G: '#c62828', C: '#1565c0', B: '#555' };
+function hlHex(yy, marks, ln) {        // drawn hexagram, email-safe: line 6 on top; marks = { line: colour }; ln = branch and relation of each line
   if (!yy || yy.length !== 6) return '';
   let h = '<table style="border-collapse:collapse;">';
   for (let l = 6; l >= 1; l--) {
-    const c = (marks && marks[l]) || '#444', bar = wd => '<td style="padding:2px 0;"><div style="width:' + wd + 'px;height:6px;background:' + c + ';font-size:0;line-height:0;">&nbsp;</div></td>';
-    h += '<tr>' + (yy[l - 1] ? bar(22) + bar(10) + bar(22) : bar(22) + '<td style="padding:2px 0;"><div style="width:10px;height:6px;font-size:0;line-height:0;">&nbsp;</div></td>' + bar(22)) +
-      '<td style="padding:0 0 0 5px;font-size:10px;color:' + c + ';line-height:10px;">' + (marks && marks[l] ? l : '') + '</td></tr>';
+    const mk = marks && marks[l], c = mk || '#444', bar = wd => '<td style="padding:3px 0;"><div style="width:' + wd + 'px;height:6px;background:' + c + ';font-size:0;line-height:0;">&nbsp;</div></td>';
+    const L = ln && ln[l - 1];
+    h += '<tr>' + (yy[l - 1] ? bar(22) + bar(10) + bar(22) : bar(22) + '<td style="padding:3px 0;"><div style="width:10px;height:6px;font-size:0;line-height:0;">&nbsp;</div></td>' + bar(22)) +
+      (L ? '<td style="padding:0 0 0 6px;font-size:12px;line-height:12px;white-space:nowrap;' + (mk ? 'font-weight:bold;' : '') + '"><span style="color:' + (mk || '#333') + ';">' + esc(L.b) + '</span> <span style="color:' + (HL_RL[L.r] || '#555') + ';">' + esc(L.r) + '</span>' + (mk ? ' <span style="color:' + mk + ';">◀</span>' : '') + '</td>'
+         : '<td style="padding:0 0 0 5px;font-size:10px;color:' + c + ';line-height:10px;">' + (mk ? l : '') + '</td>') + '</tr>';
   }
   return h + '</table>';
 }
@@ -164,8 +167,8 @@ function heluoShort(hl, t) {
     '<b style="color:#4527a0;font-size:15px;">☯ ' + esc(ttl) + '</b>' +
     '<table style="border-collapse:collapse;margin-top:6px;"><tr>' +
     '<td style="vertical-align:top;padding-right:14px;"><table style="border-collapse:collapse;"><tr>' + c2('Day', hl.bazi.day) + c2('Month', hl.bazi.month) + c2('Year', hl.bazi.year) + '</tr></table></td>' +
-    '<td style="vertical-align:top;padding-right:14px;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Block ' + hl.actor.n + ' ' + esc(hl.actor.name) + '</div>' + hlHex(hl.block_yy, mB) + '</td>' +
-    '<td style="vertical-align:top;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Day ' + hl.outcome.n + ' ' + esc(hl.outcome.name) + '</div>' + hlHex(hl.day_yy, mD) + '</td></tr></table>';
+    '<td style="vertical-align:top;padding-right:14px;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Block ' + hl.actor.n + ' ' + esc(hl.actor.name) + '</div>' + hlHex(hl.block_yy, mB, hl.block_ln) + '</td>' +
+    '<td style="vertical-align:top;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Day ' + hl.outcome.n + ' ' + esc(hl.outcome.name) + '</div>' + hlHex(hl.day_yy, mD, hl.day_ln) + '</td></tr></table>';
   let x = ttl + '\n';
   rows.forEach(r => { const o = r[1], sy = say(o);
     h += '<div style="margin-top:10px;"><b style="color:#4527a0;">' + r[0] + '</b> · <b style="color:' + col(o) + ';">' + mark(o) + '</b><br>' +
@@ -256,12 +259,12 @@ function heluoPlain(hl, t) {
     '<b style="color:#4527a0;font-size:15px;">☯ ' + esc(ttl) + '</b>' +
     '<table style="border-collapse:collapse;margin-top:6px;"><tr>' +
     '<td style="vertical-align:top;padding-right:14px;"><table style="border-collapse:collapse;"><tr>' + c2(tt === T.it ? 'Giorno' : 'Day', hl.bazi.day) + c2(tt === T.it ? 'Mese' : 'Month', hl.bazi.month) + c2(tt === T.it ? 'Anno' : 'Year', hl.bazi.year) + '</tr></table></td>' +
-    '<td style="vertical-align:top;padding-right:14px;"><div style="font-size:11px;color:#777;margin-bottom:2px;">' + hl.actor.n + ' ' + esc(hl.actor.name) + '</div>' + hlHex(hl.block_yy, mB) + '</td>' +
-    '<td style="vertical-align:top;"><div style="font-size:11px;color:#777;margin-bottom:2px;">' + hl.outcome.n + ' ' + esc(hl.outcome.name) + '</div>' + hlHex(hl.day_yy, mD) + '</td></tr></table>' +
+    '<td style="vertical-align:top;padding-right:14px;"><div style="font-size:11px;color:#777;margin-bottom:2px;">' + hl.actor.n + ' ' + esc(hl.actor.name) + '</div>' + hlHex(hl.block_yy, mB, hl.block_ln) + '</td>' +
+    '<td style="vertical-align:top;"><div style="font-size:11px;color:#777;margin-bottom:2px;">' + hl.outcome.n + ' ' + esc(hl.outcome.name) + '</div>' + hlHex(hl.day_yy, mD, hl.day_ln) + '</td></tr></table>' +
     '<div style="margin-top:10px;"><b style="color:#4527a0;">' + W.texts + '</b></div>' +
-    rows.map(r => '<div style="margin-top:6px;"><span style="color:#666;font-size:12px;">' + r[0] + ' · ' + r[1].n + ' ' + esc(r[1].name) + ', ' + W.line + ' ' + r[1].l + '</span><br><i>«' + esc(r[1].text) + '»</i></div>').join('') +
+    rows.map(r => '<div style="margin-top:6px;"><span style="color:#666;font-size:12px;">' + r[0] + ' · ' + r[1].n + ' ' + esc(r[1].name) + ', ' + W.line + ' ' + r[1].l + ' · ' + esc(r[1].b) + ' <b style="color:' + (HL_RC[r[1].rel] || '#333') + ';">' + esc(r[1].rel) + '</b></span><br><i>«' + esc(r[1].text) + '»</i></div>').join('') +
     '<div style="margin-top:12px;padding:8px 10px;background:#fff8e1;border-left:3px solid #f9a825;color:#222;line-height:1.45;"><b style="color:#4527a0;">' + W.comment + '</b>' + hlCommentHtml(hl.comment) + '</div></div>';
-  const x = ttl + '\n  ' + W.texts + '\n' + rows.map(r => '    ' + r[0] + ' · ' + r[1].n + ' ' + r[1].name + ', ' + W.line + ' ' + r[1].l + '\n      «' + r[1].text + '»').join('\n') +
+  const x = ttl + '\n  ' + W.texts + '\n' + rows.map(r => '    ' + r[0] + ' · ' + r[1].n + ' ' + r[1].name + ', ' + W.line + ' ' + r[1].l + ' · ' + r[1].b + ' ' + r[1].rel + '\n      «' + r[1].text + '»').join('\n') +
     '\n\n  ' + W.comment + '\n' + String(hl.comment).replace(/\*\*/g, '').split(/\n/).map(l => '    ' + l).join('\n') + '\n\n';
   return { h: h, x: x };
 }
@@ -310,8 +313,8 @@ function heluoBlock(hl, t, full) {
     '<b style="color:#4527a0;font-size:14px;">☯ He Luo' + (hl.who ? ' of ' + esc(hl.who) : '') + ' · ' + esc(dlabel(hl.date, t)) + '</b> <span style="color:#666;font-size:12px;">· ' + esc(hl.sphere || 'General') + '</span>' +
     '<table style="border-collapse:collapse;margin-top:6px;"><tr>' +
     '<td style="vertical-align:top;padding-right:14px;"><table style="border-collapse:collapse;"><tr>' + col('Day', hl.bazi.day) + col('Month', hl.bazi.month) + col('Year', hl.bazi.year) + '</tr></table></td>' +
-    '<td style="vertical-align:top;padding-right:14px;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Block ' + hl.actor.n + ' ' + esc(hl.actor.name) + '</div>' + hlHex(hl.block_yy, mB) + '</td>' +
-    '<td style="vertical-align:top;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Day ' + hl.outcome.n + ' ' + esc(hl.outcome.name) + '</div>' + hlHex(hl.day_yy, mD) + '</td></tr></table>' +
+    '<td style="vertical-align:top;padding-right:14px;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Block ' + hl.actor.n + ' ' + esc(hl.actor.name) + '</div>' + hlHex(hl.block_yy, mB, hl.block_ln) + '</td>' +
+    '<td style="vertical-align:top;"><div style="font-size:11px;color:#777;margin-bottom:2px;">Day ' + hl.outcome.n + ' ' + esc(hl.outcome.name) + '</div>' + hlHex(hl.day_yy, mD, hl.day_ln) + '</td></tr></table>' +
     row('Actor', hl.actor, 'who moves the day (Lord of the block)') + row('Action', hl.action, 'what is done (day line)') + row('Outcome', hl.outcome, 'how it ends (day hexagram)');
   let x = 'He Luo' + (hl.who ? ' of ' + hl.who : '') + ' · ' + dlabel(hl.date, t) + ' · ' + (hl.sphere || 'General') + '\n  Day ' + (hl.bazi.day || '') + ' · Month ' + (hl.bazi.month || '') + ' · Year ' + (hl.bazi.year || '') + '\n' +
     '  Block ' + hl.actor.n + ' ' + hl.actor.name + '\n' + hlTxt(hl.block_yy, (function () { const m = {}; m[hl.actor.l] = 'actor'; m[hl.action.l] = (m[hl.action.l] ? m[hl.action.l] + ', ' : '') + 'action'; return m; })()) +
