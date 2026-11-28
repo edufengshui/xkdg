@@ -147,7 +147,7 @@ function heluoShort(hl, t) {
       .replace(/(,| and) the partner \((man|woman)\)/g, (m, j, g) => ((g === 'man') === (hl.gender !== 'F')) ? j + ' the partner' : ''); };   // «the partner» only for whom it holds
   // one side only: the side the time gives; when the time does not decide, the side of the text
   const say = o => { const c = o.cmt; if (!c) return ''; return (c.side > 0 || (c.side === 0 && o.s >= 0)) ? (c.strong || '') : (c.weak || c.strong || ''); };
-  const rows = [['Who moves the day', hl.actor], ['What is done', hl.action], ['How it ends', hl.outcome]];
+  const rows = [['Five-day influence', hl.actor], ['Main actor today', hl.action], ['How it ends', hl.outcome]];
   // Luck: only the block and the day; a trigram that is one of the three Luck counts as that Luck
   let luck = [];
   if (hl.luck) {
@@ -192,37 +192,47 @@ function heluoShort(hl, t) {
 // delle linee così come sono e poi scrivi "Commento" e metti il tuo commento»): the three line texts as they are, then
 // «Commento»: a short reading in plain words written every morning by the Assistant (the xkdg-ai Worker, the same one
 // the app's chat uses), in the reader's language. If the Assistant does not answer, the short box (heluoShort) is used.
+// Order of the reading (Edu 28/11/2026): the Lord of the block is NOT the main actor: it is the general influence of the
+// five days of the block. The main actor is the line of the day (the one that moves), with its helper (the corresponding
+// line, when yin answers yang); at the end the sense of the whole hexagram of the day, with a note on its line.
 const HL_L = {
-  it: { texts: 'Testi delle linee', who: 'Chi muove la giornata', what: 'Cosa si fa', end: 'Come finisce', comment: 'Commento', line: 'linea',
-        corr: 'Linea corrispondente', yy: 'yin con yang: legame speciale, favorevole', yyBoth: 'yin con yang, tutte e due al posto giusto: il legame più forte', yyOne: 'yin con yang, una al posto giusto: legame favorevole',
-        no: 'stessa polarità: non si rispondono, poco sostegno', sup: 'sostegno da', to: 'a',
+  it: { texts: 'Testi delle linee', lord: 'Influenza generale dei cinque giorni', lordOf: 'Signore del blocco', from: 'dal', dayN: 'giorno', of: 'di',
+        actor: 'Attore principale di oggi', helper: 'Il suo aiutante', noHelper: 'Nessun aiutante: la linea corrispondente ha la stessa polarità e non risponde',
+        end: 'In finale: l’esagramma del giorno', itsLine: 'La sua linea', comment: 'Commento', line: 'linea',
+        yy: 'yin con yang: legame speciale, favorevole', yyBoth: 'yin con yang, tutte e due al posto giusto: il legame più forte', yyOne: 'yin con yang, una al posto giusto: legame favorevole',
         flow: { 'that generates this': 'la genera, l’aiuto arriva da solo', 'this generates that': 'ne è generata, bisogna dare per primi', 'same': 'stesso elemento, si capiscono subito',
-                'that controls this': 'la controlla, sostegno con condizioni', 'this controls that': 'ne è controllata, guidi tu e il sostegno segue' } },
-  en: { texts: 'Line texts', who: 'Who moves the day', what: 'What is done', end: 'How it ends', comment: 'Comment', line: 'line',
-        corr: 'Corresponding line', yy: 'yin with yang: a special, favourable bond', yyBoth: 'yin with yang, both in their proper place: the bond at its strongest', yyOne: 'yin with yang, one in its proper place: a favourable bond',
-        no: 'same polarity: they do not answer each other, little support', sup: 'support from', to: 'to',
+                'that controls this': 'la controlla, aiuto con condizioni', 'this controls that': 'ne è controllata, guidi tu e l’aiuto segue' } },
+  en: { texts: 'Line texts', lord: 'General influence of the five days', lordOf: 'Lord of the block', from: 'from', dayN: 'day', of: 'of',
+        actor: 'Main actor today', helper: 'Its helper', noHelper: 'No helper: the corresponding line has the same polarity and does not answer',
+        end: 'At the end: the hexagram of the day', itsLine: 'Its line', comment: 'Comment', line: 'line',
+        yy: 'yin with yang: a special, favourable bond', yyBoth: 'yin with yang, both in their proper place: the bond at its strongest', yyOne: 'yin with yang, one in its proper place: a favourable bond',
         flow: { 'that generates this': 'it generates this line, the help comes by itself', 'this generates that': 'this line generates it, one has to give first', 'same': 'same element, they understand each other at once',
-                'that controls this': 'it controls this line, the support comes with conditions', 'this controls that': 'this line controls it, you lead and the support follows' } }
+                'that controls this': 'it controls this line, the help comes with conditions', 'this controls that': 'this line controls it, you lead and the help follows' } }
 };
 const HL_LANG = { it: 'Italian', en: 'English', fr: 'French', de: 'German', es: 'Spanish', vi: 'Vietnamese' };
 const AI_URL = process.env.XKDG_AI_URL || 'https://xkdg-ai.decumano16.workers.dev';
 const HL_SYS = [
   'You write the daily He Luo Li Shu note inside a morning email. You receive the FACTS of today for one person, computed by an app (JSON). Write a short reading of the day that a person who knows nothing of the method understands at once.',
+  'HOW THE DAY IS BUILT (order of Edu, 28/11/2026):',
+  'a) five_day_influence: a line that stays the same for the five days of the current block. It is only the general climate of these days, NOT what happens today.',
+  'b) main_actor_today: the line that moves today. THIS is the heart of the day: what happens, who or what acts.',
+  'c) main_actor_today.helper: the partner line of the main actor, present only when it really helps. It says who or what comes to help, or how the matter gets solved.',
+  'd) ending: the hexagram of the day as a whole (its name and judgment give the sense of how the day turns out) and its_line, a note on the precise point.',
   'FORMAT, exactly:',
   'First one sentence that says what kind of day it is (good for what, less good for what).',
-  'Then an empty line, then 3 to 5 bullets, each: "- **Label of two to four words.** One or two short sentences."',
-  'The bullets, in this order, only those that have something to say: how the day starts (who_moves_the_day); what to do (what_is_done); what to watch at the end (how_it_ends); the hours (only if "hours" is not empty: give the clock times exactly as written and say what can happen then); the luck (only if "luck_today" is not empty).',
+  'Then an empty line, then 3 to 6 bullets, each: "- **Label of two to four words.** One or two short sentences."',
+  'The bullets, in this order, only those that have something to say: the climate of these days (five_day_influence, one bullet, short); the main thing today (main_actor_today, the longest bullet); the helper (only if there is one); how it ends (ending: the sense of the hexagram, then its line); the hours (only if "hours" is not empty: give the clock times exactly as written and say what can happen then); the luck (only if "luck_today" is not empty).',
   'RULES:',
   '1. Plain everyday words and concrete advice (what to do, what to avoid, what not to chase). Speak to the reader directly, informal "you".',
-  '2. No hexagram numbers or names, no line numbers, no Chinese characters, no technical words (block, cycle, clash, void, trine, timely). Do not use the words Wealth, Ghost, Parent, Children, Brothers: say what they mean in life, taken from "about" (money and clients; authority, rules and offices; documents, contracts and support; projects and what one produces; colleagues, friends and competitors). You may name the Luck (Fame Luck, Heaven Luck, Earth Luck).',
-  '3. Each of the three lines has a text (an old image), text_sign (favourable, neutral, unfavourable) and sometimes a ready comment (written_comment). Turn the image into what it means today for the subject of that line. A favourable line is help; an unfavourable one is what to watch. Do not quote the texts: the reader has them just above.',
-  '4. Use "notes" only to adjust the tone: GIVES WAY means that thing weakens or breaks today; COMES ALIVE means it acts strongly; Six Clashes means sudden moves and things that were tied coming apart. The background (cycle, year, month) is only a backdrop: at most half a sentence.',
-  // Rule of Edu, 26/11/2026 (the day shut at home by the snow, 55 line 6 «they peer through the gate and no longer perceive anyone»):
-  // «a volte bisogna considerare che il testo possa descrivere una situazione oggettiva».
-  '4b. A line text is not always advice or a risk to avoid: it can simply DESCRIBE what happens that day. When the image is concrete (a house shut, a journey, a meeting, something lost or received, someone arriving), say it also as a plain possible fact of the day ("you may well spend the day at home, seeing no one"), not only as a warning. This holds above all for how_it_ends. Keep it as a possibility, never a certainty.',
-  // Rule of Edu, 23/11 and 28/11/2026: the corresponding line (1-4, 2-5, 3-6).
-  '4c. corresponding_line: each of the three lines has a partner line. When its bond is good or excellent, that line is HELPED: the help comes from what the partner stands for (its relation, in life terms) and its text says how good the help is. Say in a few words who or what helps and for what; an excellent bond can soften an unfavourable text. When the bond is none, say nothing about it.',
-  '5. Never invent facts, events or rules that are not in the data. No greeting, no title, no closing remark, no disclaimer. At most 120 words in all.'
+  '2. No hexagram numbers, no line numbers, no Chinese characters, no technical words (block, cycle, clash, void, trine, timely). Do not use the words Wealth, Ghost, Parent, Children, Brothers: say what they mean in life, taken from "about" (money and clients; authority, rules and offices; documents, contracts, home, elders and support; projects and what one produces; colleagues, friends and competitors). You may name the Luck (Fame Luck, Heaven Luck, Earth Luck).',
+  '3. Each line has a text (an old image), text_sign (favourable, neutral, unfavourable) and sometimes a ready comment (written_comment). Turn the image into what it means today for the subject of that line. Do not quote the texts: the reader has them just above.',
+  '4. Use "notes" only to adjust the tone: GIVES WAY means that thing weakens or breaks today; COMES ALIVE means it acts strongly; Six Clashes means sudden moves and things that were tied coming apart. The background (cycle, year, month) is only a backdrop: at most half a sentence, or nothing.',
+  // Rule of Edu, 26/11/2026 (the day shut at home by the snow) and 28/11/2026 (the coffee machine: «the legs of the cauldron
+  // are broken», then «a cauldron with legs upturned, removal of stagnating stuff»): the text can describe an objective fact.
+  '4b. A line text is not always advice or a risk to avoid: it can simply DESCRIBE what happens that day, even in a small domestic fact. When the image is concrete (a vessel or a tool that breaks, a house shut, a journey, a meeting, something lost, spilled or received, someone arriving), say it also as a plain possible fact of the day ("something in the kitchen may break or jam", "you may well spend the day at home"), not only as a warning. Keep it as a possibility, never a certainty.',
+  // Rule of Edu, 23/11 and 28/11/2026: the corresponding line is the helper of the main actor.
+  '4c. The helper: when main_actor_today.helper is there, say in a few words who or what helps and how (its text often shows the way out of the trouble of the main actor); a helper can soften an unfavourable main actor. When there is none, say nothing about it.',
+  '5. Never invent facts, events or rules that are not in the data. No greeting, no title, no closing remark, no disclaimer. At most 140 words in all.'
 ].join('\n');
 async function heluoComment(hl, lang) {
   if (!hl || !hl.actor || !hl.action || !hl.outcome) return null;
@@ -234,12 +244,16 @@ async function heluoComment(hl, lang) {
   const L = o => o ? { relation: o.rel, about: about(o), text: o.text, text_sign: sign(o), helped_by_the_time: !!o.timely, written_comment: say(o), corresponding_line: CQ(o) } : undefined;
   const lk = []; if (hl.luck) { const g = {}; [['heaven', 'Heaven Luck'], ['earth', 'Earth Luck'], ['fame', 'Fame Luck']].forEach(k => { if (hl.luck[k[0]]) g[hl.luck[k[0]]] = k[1]; });
     [hl.actor.up, hl.actor.lo, hl.outcome.up, hl.outcome.lo].forEach(tg => { if (g[tg] && lk.indexOf(g[tg]) < 0) lk.push(g[tg]); }); }
+  const noCq = o => { const x = L(o); if (x) delete x.corresponding_line; return x; };
+  const act = noCq(hl.action); if (act) { const hq = CQ(hl.action); if (hq && /^(good|excellent)/.test(hq.bond)) act.helper = hq; }
   const facts = { date: hl.date, reader: hl.gender === 'F' ? 'a woman' : 'a man', sphere_of_life: hl.sphere || 'General (the day as a whole)',
-    who_moves_the_day: L(hl.actor), what_is_done: L(hl.action), how_it_ends: L(hl.outcome),
+    five_day_influence: noCq(hl.actor), main_actor_today: act,
+    ending: { hexagram_of_the_day: hl.day_hex ? { name: hl.day_hex.title, judgment: hl.day_hex.judgment } : undefined, its_line: noCq(hl.outcome) },
     background: { cycle: L(hl.cycle), year: L(hl.annual), month: L(hl.month) },
     notes: [].concat((hl.prevalence || []).map(p => 'Prevalence: ' + p), hl.year_clash || [], hl.day_clash || [], hl.notes || [], hl.legacy ? [hl.legacy] : []).slice(0, 10),
     luck_today: lk,
-    hours: (hl.hours || []).filter(o => o.role).map(o => ({ clock: o.window, what: String(o.role).replace(/\s*\([^)]*\)/g, '') })) };
+    hours: (hl.hours || []).filter(o => o.role).map(o => ({ clock: o.window, what: String(o.role).replace(/\s*\([^)]*\)/g, '')
+      .replace(/the ACTOR ENTERS THE SCENE/, 'the theme of the five days comes to the front').replace(/someone confronts the actor/, 'something goes against the theme of the five days') })) };
   const body = JSON.stringify({ max_tokens: 6000, system: HL_SYS + '\n6. Write in ' + (HL_LANG[lang] || 'English') + '.',
     messages: [{ role: 'user', content: 'FACTS OF TODAY:\n' + JSON.stringify(facts) }] });
   for (let n = 0; n < 2; n++) {
@@ -262,28 +276,39 @@ function hlCommentHtml(txt) {
     : '<div style="margin:4px 0 0;">' + b(x) + '</div>').join('');
 }
 function heluoPlain(hl, t) {
-  const lang = HL_L[hl.lang] ? hl.lang : 'en', W = HL_L[lang], tt = T[lang] || t;
+  const lang = HL_L[hl.lang] ? hl.lang : 'en', W = HL_L[lang], tt = T[lang] || t, it = lang === 'it';
   const ttl = 'He Luo' + (hl.who ? ' · ' + hl.who : '') + ' · ' + dlabel(hl.date, tt) + (hl.sphere ? ' · ' + hl.sphere : '');
   const c2 = (lbl, gz) => '<td style="text-align:center;padding:0 8px 0 0;font-size:11px;color:#777;">' + lbl + '<div style="font-size:16px;color:#222;line-height:1.25;">' + (gz ? esc(gz.charAt(0)) + '<br>' + esc(gz.charAt(1)) : '·<br>·') + '</div></td>';
   const mB = {}; mB[hl.actor.l] = '#6a1b9a'; mB[hl.action.l] = '#c62828'; const mD = {}; mD[hl.outcome.l] = '#c62828';
-  const rows = [[W.who, hl.actor], [W.what, hl.action], [W.end, hl.outcome]];
-  // the corresponding line of each of the three lines (Edu 28/11/2026)
-  const cq = o => { const q = o.corr; if (!q) return null; return { head: W.corr + ' ' + q.l + ' · ' + q.b + ' ' + q.rel,
-    bond: !q.yy ? W.no : (q.okHere && q.okThere) ? W.yyBoth : (q.okHere || q.okThere) ? W.yyOne : W.yy, sup: q.yy ? W.sup + ' ' + q.rel + ' ' + W.to + ' ' + o.rel + (W.flow[q.flow] ? ' (' + W.flow[q.flow] + ')' : '') : '', text: q.yy ? q.text : '', good: q.yy }; };
-  const cqH = o => { const c = cq(o); return c ? '<div style="margin-top:2px;font-size:12px;color:' + (c.good ? '#2e7d32' : '#888') + ';">⇄ ' + esc(c.head) + ' — ' + esc(c.bond) + (c.sup ? '; ' + esc(c.sup) : '') + '.' +
-    (c.text ? ' <i style="color:#666;">«' + esc(c.text) + '»</i>' : '') + '</div>' : ''; };
-  const cqX = o => { const c = cq(o); return c ? '\n      <-> ' + c.head + ' — ' + c.bond + (c.sup ? '; ' + c.sup : '') + '.' + (c.text ? ' «' + c.text + '»' : '') : ''; };
+  // the block: five days, one per free line, counted from the line above the Lord
+  const dn = ((hl.action.l - hl.actor.l - 1) % 6 + 6) % 6 + 1;
+  const d0 = (function () { const d = new Date(hl.date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - (dn - 1)); return d.toISOString().slice(0, 10); })();
+  const blk = dn >= 1 && dn <= 5 ? W.from + ' ' + dlabel(d0, tt) + ', ' + W.dayN + ' ' + dn + ' ' + W.of + ' 5' : '';
+  const q = hl.action.corr, hq = q && q.yy ? q : null;
+  const bond = hq ? ((hq.okHere && hq.okThere) ? W.yyBoth : (hq.okHere || hq.okThere) ? W.yyOne : W.yy) + (W.flow[hq.flow] ? '; ' + W.flow[hq.flow] : '') : '';
+  const dhName = hl.day_hex && hl.day_hex.title ? hl.day_hex.title : (hl.outcome.n + ' ' + hl.outcome.name);
+  const lab = (x, sub) => '<div style="margin-top:9px;"><b style="color:#4527a0;">' + esc(x) + '</b>' + (sub ? '<br><span style="color:#666;font-size:12px;">' + sub + '</span>' : '') + '</div>';
+  const rl = o => esc(o.b) + ' <b style="color:' + (HL_RC[o.rel] || '#333') + ';">' + esc(o.rel) + '</b>';
+  const tx = x => x ? '<div><i>«' + esc(x) + '»</i></div>' : '';
   let h = '<div style="background:#f7f3ff;border:1px solid #b39ddb;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:14px;">' +
     '<b style="color:#4527a0;font-size:15px;">☯ ' + esc(ttl) + '</b>' +
     '<table style="border-collapse:collapse;margin-top:6px;"><tr>' +
-    '<td style="vertical-align:top;padding-right:14px;"><table style="border-collapse:collapse;"><tr>' + c2(tt === T.it ? 'Giorno' : 'Day', hl.bazi.day) + c2(tt === T.it ? 'Mese' : 'Month', hl.bazi.month) + c2(tt === T.it ? 'Anno' : 'Year', hl.bazi.year) + '</tr></table></td>' +
-    '<td style="vertical-align:top;padding-right:14px;"><div style="font-size:11px;color:#777;margin-bottom:2px;">' + hl.actor.n + ' ' + esc(hl.actor.name) + '</div>' + hlHex(hl.block_yy, mB, hl.block_ln) + '</td>' +
-    '<td style="vertical-align:top;"><div style="font-size:11px;color:#777;margin-bottom:2px;">' + hl.outcome.n + ' ' + esc(hl.outcome.name) + '</div>' + hlHex(hl.day_yy, mD, hl.day_ln) + '</td></tr></table>' +
-    '<div style="margin-top:10px;"><b style="color:#4527a0;">' + W.texts + '</b></div>' +
-    rows.map(r => '<div style="margin-top:6px;"><span style="color:#666;font-size:12px;">' + r[0] + ' · ' + r[1].n + ' ' + esc(r[1].name) + ', ' + W.line + ' ' + r[1].l + ' · ' + esc(r[1].b) + ' <b style="color:' + (HL_RC[r[1].rel] || '#333') + ';">' + esc(r[1].rel) + '</b></span><br><i>«' + esc(r[1].text) + '»</i>' + cqH(r[1]) + '</div>').join('') +
+    '<td style="vertical-align:top;padding-right:14px;"><table style="border-collapse:collapse;"><tr>' + c2(it ? 'Giorno' : 'Day', hl.bazi.day) + c2(it ? 'Mese' : 'Month', hl.bazi.month) + c2(it ? 'Anno' : 'Year', hl.bazi.year) + '</tr></table></td>' +
+    '<td style="vertical-align:top;padding-right:14px;"><div style="font-size:11px;color:#777;margin-bottom:2px;">' + (it ? 'Blocco ' : 'Block ') + hl.actor.n + ' ' + esc(hl.actor.name) + '</div>' + hlHex(hl.block_yy, mB, hl.block_ln) + '</td>' +
+    '<td style="vertical-align:top;"><div style="font-size:11px;color:#777;margin-bottom:2px;">' + (it ? 'Giorno ' : 'Day ') + hl.outcome.n + ' ' + esc(hl.outcome.name) + '</div>' + hlHex(hl.day_yy, mD, hl.day_ln) + '</td></tr></table>' +
+    lab(W.lord, W.lordOf + ' · ' + hl.actor.n + ' ' + esc(hl.actor.name) + ', ' + W.line + ' ' + hl.actor.l + ' · ' + rl(hl.actor) + (blk ? ' · ' + esc(blk) : '')) + tx(hl.actor.text) +
+    lab(W.actor, hl.action.n + ' ' + esc(hl.action.name) + ', ' + W.line + ' ' + hl.action.l + ' · ' + rl(hl.action)) + tx(hl.action.text) +
+    (q ? (hq ? lab(W.helper, W.line + ' ' + hq.l + ' · ' + esc(hq.b) + ' <b style="color:' + (HL_RC[hq.rel] || '#333') + ';">' + esc(hq.rel) + '</b> · <span style="color:#2e7d32;">' + esc(bond) + '</span>') + tx(hq.text)
+                 : '<div style="margin-top:6px;font-size:12px;color:#888;">' + esc(W.noHelper) + ' (' + W.line + ' ' + q.l + ' · ' + esc(q.b) + ' ' + esc(q.rel) + ').</div>') : '') +
+    lab(W.end, esc(dhName)) + tx(hl.day_hex && hl.day_hex.judgment) +
+    '<div style="margin-top:5px;"><span style="color:#666;font-size:12px;">' + W.itsLine + ' ' + hl.outcome.l + ' · ' + rl(hl.outcome) + '</span></div>' + tx(hl.outcome.text) +
     '<div style="margin-top:12px;padding:8px 10px;background:#fff8e1;border-left:3px solid #f9a825;color:#222;line-height:1.45;"><b style="color:#4527a0;">' + W.comment + '</b>' + hlCommentHtml(hl.comment) + '</div></div>';
-  const x = ttl + '\n  ' + W.texts + '\n' + rows.map(r => '    ' + r[0] + ' · ' + r[1].n + ' ' + r[1].name + ', ' + W.line + ' ' + r[1].l + ' · ' + r[1].b + ' ' + r[1].rel + '\n      «' + r[1].text + '»' + cqX(r[1])).join('\n') +
-    '\n\n  ' + W.comment + '\n' + String(hl.comment).replace(/\*\*/g, '').split(/\n/).map(l => '    ' + l).join('\n') + '\n\n';
+  const x = ttl + '\n  ' + W.lord + ' (' + W.lordOf + ' · ' + hl.actor.n + ' ' + hl.actor.name + ', ' + W.line + ' ' + hl.actor.l + ' · ' + hl.actor.b + ' ' + hl.actor.rel + (blk ? ' · ' + blk : '') + ')\n    «' + hl.actor.text + '»\n' +
+    '  ' + W.actor + ' (' + hl.action.n + ' ' + hl.action.name + ', ' + W.line + ' ' + hl.action.l + ' · ' + hl.action.b + ' ' + hl.action.rel + ')\n    «' + hl.action.text + '»\n' +
+    (q ? (hq ? '  ' + W.helper + ' (' + W.line + ' ' + hq.l + ' · ' + hq.b + ' ' + hq.rel + ' · ' + bond + ')\n    «' + hq.text + '»\n' : '  ' + W.noHelper + ' (' + W.line + ' ' + q.l + ' · ' + q.b + ' ' + q.rel + ').\n') : '') +
+    '  ' + W.end + ' (' + dhName + ')\n' + (hl.day_hex && hl.day_hex.judgment ? '    «' + hl.day_hex.judgment + '»\n' : '') +
+    '    ' + W.itsLine + ' ' + hl.outcome.l + ' · ' + hl.outcome.b + ' ' + hl.outcome.rel + ': «' + hl.outcome.text + '»\n' +
+    '\n  ' + W.comment + '\n' + String(hl.comment).replace(/\*\*/g, '').split(/\n/).map(l => '    ' + l).join('\n') + '\n\n';
   return { h: h, x: x };
 }
 function heluoBlock(hl, t, full) {

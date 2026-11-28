@@ -185,6 +185,8 @@ if (HL) {
         block_yy: F.actor ? yy(F.actor.hexagram) : null, day_yy: ac.outcome ? yy(ac.outcome.hexagram) : null,
         // branch and relation (B C W G P, for the person of the day) of all six lines, for the drawings (Edu 28/11/2026)
         block_ln: F.actor ? six(F.actor.hexagram) : null, day_ln: ac.outcome ? six(ac.outcome.hexagram) : null,
+        // the hexagram of the day as a whole (Edu 28/11/2026: «in finale il senso dell'intero esagramma del giorno»)
+        day_hex: (function () { try { const tx = w.XKDG_HELUO_TEXTS[ac.outcome.hexagram]; return { n: ac.outcome.hexagram, title: String(tx.title || ''), judgment: String(tx.judgment || '') }; } catch (e) { return null; } })(),
         prevalence: (r.prevalence || []).filter(x => x !== 'none'), levels: r.relations_between_levels || [],
         year_clash: sc.year_clash || [], day_clash: ac.day_clash || [], notes: r.notes_of_the_day || [],
         legacy: r.legacy_or_document || '', hours: hrs,
