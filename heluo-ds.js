@@ -52,7 +52,7 @@
 
   // ── Fixed weights (ds_cascata.js) ─────────────────────────────────────────
   var PURPOSES = {
-    wealth:  { label: 'Wealth · income, sales, listing',      w: { W: 2, C: 1, P: 0, G: 0, B: -1 } }, // 食傷生財; 比劫奪財
+    wealth:  { label: 'Wealth · income, sale, contract',      w: { W: 2, C: 1, P: 0, G: 0, B: -1 } }, // 食傷生財; 比劫奪財
     output:  { label: 'Output · launch, creation, giving',     w: { C: 2, B: 1, W: 0, G: 0, P: -1 } }, // 梟神奪食
     parent:  { label: 'Parent · contracts, documents, study',  w: { P: 2, G: 1, B: 0, C: 0, W: -1 } }, // 官生印; 財壞印
     officer: { label: 'Officer · appointment, position',       w: { G: 2, W: 1, P: 0, B: 0, C: -1 } }  // 財生官; 傷官見官
@@ -1156,8 +1156,12 @@
   // to PURPOSE in the XKDG Date Selection (Wealth · Sell, Luck · ★ Fame, $ and $$), here on every day of the range — no XKDG
   // filter of favourable dates and no hour (so «$$» is only the day stem ×2, without the Ke of the hour).
   // id → [purpose of thread(), variant, label]
-  var EXP_PURP = { sell: ['wealth', 'sell', 'Sell · a sale, a contract (experimental)'], fame: ['luck', 'fame', '★ Fame · election, prize, recognition (experimental)'],
-    money: ['luck', 'money', '$ Windfall · ticket, prize (experimental)'], money2: ['luck', 'money2', '$$ Windfall · day stem ×2 (experimental)'] };
+  // Edu 28/11/2026 («così è solo confusionario»): Wealth and Sell are ONE entry (Wealth, with the switch of year and period
+  // of the sales shown on top and in the day) and the two windfalls are ONE entry ($; a day that is also Wealth for the day
+  // stem is marked «$$» and comes first among equal scores). Old ids are mapped by EXP_ALIAS.
+  var EXP_PURP = { fame: ['luck', 'fame', '★ Fame · election, prize, recognition (experimental)'],
+    money: ['luck', 'money', '$ Windfall · ticket, prize (experimental)'] };
+  var EXP_ALIAS = { sell: 'wealth', money2: 'money' };
   // «＋ XKDG» (Edu 25/11/2026: «una date selection solo HLLS ma che abbia un pulsante che aggiunge il XKDG solito già
   // implementato nel resto del software»). Off: the He Luo days alone. On: the usual XKDG Date Selection (app-bazi.js
   // runScanner, with Person A, place, FILTER and Feng Shui settings as they are in the main panel) is run on the same range
@@ -1206,7 +1210,75 @@
         if (th) out.push({ date: t, Pe: Pe, th: th, adj: th.adj || 0, sum: xkSummary(th) });
       }
     } finally { _xkForce = prev; }
-    return { id: id, days: out, sorted: out.slice().sort(function (x, y) { return y.adj - x.adj || x.date - y.date; }) };
+    function stW(g) { return g.th.money && g.th.money.stemW ? 1 : 0; }
+    return { id: id, days: out, sorted: out.slice().sort(function (x, y) { return y.adj - x.adj || stW(y) - stW(x) || x.date - y.date; }) };
+  }
+  // Order of the list (Edu 28/11/2026: «un selettore che ordini by date oltre l'ordine per punteggio»)
+  function pick(days, sorted) {
+    var a = _st.all ? (_st.sort === 'date' ? days : sorted) : xkBest(sorted);
+    return _st.sort === 'date' ? a.slice().sort(function (x, y) { return x.date - y.date; }) : a;
+  }
+  function listHead(n, m, what) {
+    var B = 'font-size:11px;padding:3px 9px;border-radius:10px;border:1px solid #5e35b1;cursor:pointer;', on = 'background:#5e35b1;color:#fff;', off = 'background:#fff;color:#5e35b1;', d = _st.sort === 'date';
+    return '<div style="font-size:12px;color:#333;margin:4px 0;">' + (_st.all ? 'All ' + n + ' days' : 'Best ' + m + ' of ' + n + ' days') + ' · ' + what + ' · '
+      + '<a href="javascript:void 0" onclick="xkdgHLDSAll()" style="color:#5e35b1;">' + (_st.all ? 'show the best' : 'show all days') + '</a></div>'
+      + '<div style="display:flex;gap:6px;align-items:center;margin:2px 0 6px;font-size:11px;color:#666;">Order: <button onclick="xkdgHLDSSort(\'score\')" style="' + B + (d ? off : on) + '">🏆 By score</button>'
+      + '<button onclick="xkdgHLDSSort(\'date\')" style="' + B + (d ? on : off) + '">📅 By date</button></div>';
+  }
+  // The five hexagrams of the day at a glance (Edu 28/11/2026: «cliccando la data dovrebbero apparire gli esagrammi»)
+  function miniHex(lines, mv) {
+    var w = 44, lh = 5, gap = 4, pad = 6, bw = w - 2 * pad, h = 6 * lh + 5 * gap, s = '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" style="display:block;margin:0 auto;">';
+    for (var i = 0; i < 6; i++) { var y = (5 - i) * (lh + gap), c = mv === i + 1 ? '#c62828' : '#222';
+      s += lines[i] ? '<rect x="' + pad + '" y="' + y + '" width="' + bw + '" height="' + lh + '" fill="' + c + '"/>'
+        : '<rect x="' + pad + '" y="' + y + '" width="' + (bw * 0.43) + '" height="' + lh + '" fill="' + c + '"/><rect x="' + (pad + bw * 0.57) + '" y="' + y + '" width="' + (bw * 0.43) + '" height="' + lh + '" fill="' + c + '"/>';
+      if (mv === i + 1) s += '<circle cx="2.5" cy="' + (y + lh / 2) + '" r="2.2" fill="#c62828"/>'; }
+    return s + '</svg>';
+  }
+  function dayHexes(p) { var dh = p.daily; return [['Cycle', p.hx, p.per.line], ['Annual', p.annual.hex, p.annual.moved], ['Monthly', p.month.hex, dh.lord], ['Block', dh.block, dh.line], ['Day', dh.hex, dh.line]]; }
+  function hexStrip(p, me, full) {
+    var h = '<div style="display:flex;gap:4px;justify-content:space-between;margin:4px 0 6px;">';
+    dayHexes(p).forEach(function (x) { var nm = U().hexName ? U().hexName(x[1].n) : '', q = ($('hl-qy') || {}).checked && U().qiYun && U().qiYun(x[1].n);
+      h += '<div style="flex:1;min-width:0;text-align:center;font-size:10px;color:#777;line-height:1.35;">' + x[0] + miniHex(x[1].lines, x[2])
+        + '<b style="font-size:12px;color:#222;">' + x[1].n + '</b> <span style="color:#c62828;">l' + x[2] + '</span><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(nm) + '</div>'
+        + (q ? '<div>Qi <b style="color:#c62828;">' + q[0] + '</b> Yun <b style="color:#1565c0;">' + q[1] + '</b></div>' : '') + '</div>'; });
+    h += '</div>';
+    if (full && U().cycleHexSvg) { h += '<details style="margin:2px 0 6px;"><summary style="cursor:pointer;font-size:12px;color:#4527a0;font-weight:600;">☰ Lines of the five hexagrams · branches and relations</summary>';
+      dayHexes(p).forEach(function (x) { h += '<div style="font-size:11px;color:#4527a0;font-weight:600;margin-top:6px;">' + x[0] + ' · ' + x[1].n + ' ' + esc(U().hexName ? U().hexName(x[1].n) : '') + ' · line ' + x[2] + '</div>' + U().cycleHexSvg(x[1], x[2], null, me); });
+      h += '</details>'; }
+    return h;
+  }
+  // «XKDG in Main» (Edu 28/11/2026: «vedere anche la configurazione XKDG in Main, e poi tornare indietro»): the day (true-solar
+  // noon) or one of its favourable XKDG hours goes to the main panel; the He Luo window is hidden, not closed, and a floating
+  // button brings it back as it was.
+  function mainBtns(dateMs) {
+    if (typeof document === 'undefined' || !document.getElementById('date')) return '';
+    var iso = isoDay(dateMs), B = 'font-size:11px;padding:4px 10px;border-radius:10px;border:1px solid #1565c0;background:#fff;color:#1565c0;cursor:pointer;', rows = xkRows(dateMs) || [];
+    var h = '<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:4px 0 6px;"><button onclick="xkdgHLDSMain(\'' + iso + '\',-1)" style="' + B + 'background:#1565c0;color:#fff;" title="Show this day in the main panel; a button brings you back here">▦ XKDG in Main</button>';
+    rows.slice(0, 4).forEach(function (x) { h += '<button onclick="xkdgHLDSMain(\'' + iso + '\',' + x.h + ')" style="' + B + '" title="Favourable XKDG hour, score ' + x.score + '">' + esc(x.lab) + ' ' + x.time + '</button>'; });
+    return h + '</div>';
+  }
+  root.xkdgHLDSMain = function (iso, hi) {
+    try {
+      if (typeof root.loadDateIntoMain === 'function') root.loadDateIntoMain(iso, hi >= 0 ? hi : 6);
+      else { document.getElementById('date').value = iso; if (document.getElementById('time')) document.getElementById('time').value = '12:00'; if (typeof root.calculateBazi === 'function') root.calculateBazi(); }
+    } catch (e) {}
+    var ov = document.getElementById('hl-overlay'); if (ov) ov.style.display = 'none';
+    var old = document.getElementById('back-to-results'); if (old) old.style.display = 'none';
+    var b = document.getElementById('back-to-heluo');
+    if (!b) {
+      b = document.createElement('button'); b.id = 'back-to-heluo'; b.textContent = '↩ Back to He Luo';
+      b.setAttribute('style', 'position:fixed;left:16px;bottom:16px;z-index:99998;padding:10px 14px;border:0;border-radius:22px;background:#5e35b1;color:#fff;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.3);');
+      b.addEventListener('click', function () { var o = document.getElementById('hl-overlay'); if (o) o.style.display = 'flex'; b.style.display = 'none'; });
+      document.body.appendChild(b);
+    }
+    b.style.display = 'block';
+  };
+  // Wealth: the switch of year and period of the sales (sellMeter), shown and not added to the score
+  function sellHead(days) {
+    var seg = []; days.forEach(function (g) { if (!g.sell) return; var k = g.sell.level + '|' + g.sell.why.join(' · '), l = seg[seg.length - 1]; if (l && l.k === k) l.to = g.date; else seg.push({ k: k, s: g.sell, from: g.date, to: g.date }); });
+    if (!seg.length) return '';
+    return '<div style="font-size:11px;margin:2px 0 6px;line-height:1.5;"><b>Selling (a sale, a contract)</b> · year and period: ' + seg.map(function (x) {
+      return (seg.length > 1 ? fmtDate(x.from) + ' → ' + fmtDate(x.to) + ' ' : '') + '<b style="color:' + (x.s.lv ? '#2e7d32' : '#777') + ';">' + x.s.level + '</b>' + (x.s.why.length ? ' — ' + esc(x.s.why.join(' · ')) : ''); }).join('<br>') + '</div>';
   }
   function expDetail(g) {
     var th = g.th, G = 'color:#2e7d32;', Rd = 'color:#c62828;', a = [];
@@ -1214,7 +1286,7 @@
       a.push('<div style="' + (F.yr ? G : 'color:#777;') + '">Year ' + esc(F.yrTxt) + '</div>');
       a.push(F.why.length ? '<div style="' + G + '">▲ ' + esc(F.why.join(' · ')) + '</div>' : '<div>The day line and its outcome are not in ' + F.F + ', your Fame Luck.</div>'); }
     if (th.money) { var M = th.money;
-      a.push('<div>window ' + M.win + '/3 · day ' + M.day + '/2' + (M.stemW ? ' · day stem Wealth' : '') + '</div>');
+      a.push('<div>window ' + M.win + '/3 · day ' + M.day + '/2' + (M.stemW ? ' · <b style="color:#b8860b;">$$ day stem Wealth</b>' : '') + '</div>');
       a.push('<div style="' + (M.per > 0 ? G : M.per < 0 ? Rd : 'color:#777;') + '">Period ' + esc(M.perTxt) + '</div>');
       a.push(M.why.length ? '<div style="' + G + '">▲ ' + esc(M.why.join(' · ')) + '</div>' : '<div>No Wealth on the month line, the Lord, the day line, in the trigrams of block and day, or on the day stem.</div>');
       if (M.skip.length) a.push('<div style="color:#777;">' + esc(M.skip.join(' · ')) + '</div>'); }
@@ -1226,27 +1298,28 @@
       if (th.loss && th.loss.length) a.push('<div style="' + Rd + '">▼ in play, but at a loss (unfavourable text)</div>');
       if (th.alarm) a.push('<div style="' + Rd + '">⚠ ' + esc(th.alarm.level + ' day: ' + th.alarm.sig.join('; ')) + '</div>'); }
     var p = th.p;
+    a.unshift(mainBtns(g.date) + hexStrip(p, th.pers, true));
     a.push('<div style="color:#777;margin-top:3px;">cycle ' + p.id.cycle[0] + ' l' + p.id.cycle[1] + ' · annual ' + p.id.year[0] + ' l' + p.id.year[1] + ' · monthly ' + p.month.hex.n + ' l' + p.month.line + ' · block ' + p.id.lord[0] + ' Lord l' + p.id.lord[1] + ' · day line l' + p.id.day[1] + ' → day ' + p.id.dayHex[0] + '</div>');
     return '<div style="border:1px solid #b39ddb;background:#f7f3fd;border-radius:8px;padding:8px;font-size:12px;line-height:1.55;">' + a.join('') + '</div>';
   }
   function expResults(chart, r) {
     var E = EXP_PURP[r.id], n = r.days.length;
     if (!n) return '<div style="font-size:12px;color:#888;">No day inside the Xian Tian / Hou Tian cycles.</div>';
-    var list = _st.all ? r.days : xkBest(r.sorted);
-    var h = '<div style="font-size:12px;color:#333;margin:4px 0;">' + (_st.all ? 'All ' + n + ' days in date order' : 'Best ' + list.length + ' of ' + n + ' days') + ' · <b>' + esc(E[2]) + '</b> · '
-      + '<a href="javascript:void 0" onclick="xkdgHLDSAll()" style="color:#5e35b1;">' + (_st.all ? 'show the best' : 'show all days') + '</a></div>' + xkHead(n, r.days);
+    var list = pick(r.days, r.sorted);
+    var h = listHead(n, list.length, '<b>' + esc(E[2]) + '</b>') + xkHead(n, r.days);
     list.forEach(function (g) {
       var on = _st.open === g.date;
       h += '<div onclick="xkdgHLDSOpen(' + g.date + ')" style="cursor:pointer;border-top:1px solid #eee;padding:5px 4px;' + (on ? 'background:#ede7f6;' : '') + '">'
-        + '<b>' + fmtDate(g.date) + '</b> <span style="font-size:10px;color:#999;">' + g.Pe.day + ' day · ' + g.Pe.month + ' month</span> · <b style="color:' + (g.adj > 0 ? '#2e7d32' : g.adj < 0 ? '#c62828' : '#777') + ';">☯ ' + sgn(g.adj) + '</b>'
+        + '<b>' + fmtDate(g.date) + '</b> <span style="font-size:10px;color:#999;">' + g.Pe.day + ' day · ' + g.Pe.month + ' month</span> · <b style="color:' + (g.adj > 0 ? '#2e7d32' : g.adj < 0 ? '#c62828' : '#777') + ';">☯ ' + sgn(g.adj) + '</b>' + (g.th.money && g.th.money.stemW ? ' <b style="color:#b8860b;" title="Wealth day for your day stem">$$</b>' : '')
         + '<div style="font-size:11px;color:#444;">' + esc(g.sum) + '</div>' + xkLine(g.date) + '</div>';
       if (on) h += '<div style="padding:2px 4px 10px;">' + expDetail(g) + cmtBox(isoDay(g.date)) + '</div>';
     });
     return h + '<div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Experimental (Edu, 24–25/11/2026). Every day of the range, He Luo only; «＋ XKDG» adds the favourable hours of the usual XKDG Date Selection. ☯ = the points this reading would add to the XKDG score (5% each). Tendencies seen on a few dozen cases, not rules.</div>';
   }
-  var _st = { mode: 'score', purpose: 'wealth', from: null, to: null, place: 'gps', res: null, open: null, xk: false };
+  var _st = { mode: 'score', purpose: 'wealth', from: null, to: null, place: 'gps', res: null, open: null, xk: false, sort: 'score' };
   // pre-fill from the XKDG Date Selection (heluo-lishu.js openHeluoLishuFor) and run at the next render
   root.xkdgHLDSPreset = function (o) {
+    if (o.purpose && EXP_ALIAS[o.purpose]) o.purpose = EXP_ALIAS[o.purpose];
     if (o.purpose && (PURPOSES[o.purpose] || EXP_PURP[o.purpose])) _st.purpose = o.purpose;
     if (o.from) { _st.from = o.from; _st.to = o.to || o.from; }
     _st.res = null; _st.open = null; _st.autorun = true;
@@ -1280,7 +1353,7 @@
   function key(chart) { return chart.c.name + '|' + chart.c.date + '|' + chart.c.time + '|' + chart.male + '|' + _st.mode + '|' + _st.purpose + '|' + _st.from + '|' + _st.to + '|' + _st.place + '|' + (_st.xk ? 'x' : ''); }
   root.xkdgHLDSRun = function () {
     var chart = H().currentChart && H().currentChart(); if (!chart || !chart.R) return;
-    _st.mode = $('hlds-mo') ? $('hlds-mo').value : 'score'; _st.purpose = $('hlds-pu').value; _st.from = $('hlds-from').value; _st.to = $('hlds-to').value; _st.place = $('hlds-pl').value; _st.open = null;
+    _st.mode = $('hlds-mo') ? $('hlds-mo').value : 'score'; _st.purpose = $('hlds-pu').value; if (EXP_ALIAS[_st.purpose]) _st.purpose = EXP_ALIAS[_st.purpose]; _st.from = $('hlds-from').value; _st.to = $('hlds-to').value; _st.place = $('hlds-pl').value; _st.open = null;
     var a = Date.parse(_st.from + 'T00:00:00Z'), b = Date.parse(_st.to + 'T00:00:00Z'), out = $('hlds-res');
     if (!isFinite(a) || !isFinite(b) || b < a) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">Check the dates.</div>'; return; }
     if (b - a > 365 * 86400000) { b = a + 365 * 86400000; _st.to = isoDay(b); $('hlds-to').value = _st.to; }
@@ -1290,6 +1363,7 @@
     setTimeout(function () {
       try {
         var ctx = context(chart.R, chart.Pn, chart.male), r = _st.mode === 'score' ? (EXP_PURP[_st.purpose] ? { exp: expScan(ctx, a, b, pl.lon, _st.purpose) } : scan(ctx, a, b, pl.lon, _st.purpose)) : { cf: cfScan(ctx, a, b, pl.lon, _st.mode) };
+        if (_st.mode === 'score' && _st.purpose === 'wealth' && r.days) r.days.forEach(function (g) { try { g.sell = sellMeter(ctx, g.p, g.pers); } catch (e) {} });
         _st.res = { key: key(chart), r: r, lon: pl.lon, xk: _st.xk && _st.mode === 'score' ? xkdgRun(_st.from, Math.round((b - a) / 86400000) + 1, _st.purpose) : null }; results(chart);
       } catch (e) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">Calculation failed: ' + esc(e && e.message) + '</div>'; }
     }, 20);
@@ -1302,14 +1376,14 @@
   };
   root.xkdgHLDSOpen = function (t) { _st.open = _st.open === t ? null : t; var chart = H().currentChart(); if (chart) results(chart); };
   root.xkdgHLDSAll = function () { _st.all = !_st.all; var chart = H().currentChart(); if (chart) results(chart); };
+  root.xkdgHLDSSort = function (k) { _st.sort = k === 'date' ? 'date' : 'score'; var chart = H().currentChart(); if (chart) results(chart); };
   function results(chart) {
     var out = $('hlds-res'), r = _st.res.r; if (!out) return;
     if (r.cf) { out.innerHTML = cfResults(chart, r.cf); return; }
     if (r.exp) { out.innerHTML = expResults(chart, r.exp); return; }
     if (!r.days.length) { out.innerHTML = '<div style="font-size:12px;color:#888;">No day inside the Xian Tian / Hou Tian cycles.</div>'; return; }
-    var list = _st.all ? r.days : xkBest(r.sorted), TD = 'padding:4px 5px;', n = r.days.length;
-    var h = '<div style="font-size:12px;color:#333;margin:4px 0;">' + (_st.all ? 'All ' + n + ' days in date order' : 'Best ' + list.length + ' of ' + n + ' days') + ' · purpose <b>' + _st.purpose + '</b> · '
-      + '<a href="javascript:void 0" onclick="xkdgHLDSAll()" style="color:#5e35b1;">' + (_st.all ? 'show the best' : 'show all days') + '</a></div>' + xkHead(n, r.days)
+    var list = pick(r.days, r.sorted), TD = 'padding:4px 5px;', n = r.days.length;
+    var h = listHead(n, list.length, 'purpose <b>' + _st.purpose + '</b>') + sellHead(r.days) + xkHead(n, r.days)
       + '<table style="border-collapse:collapse;font-size:12px;width:100%;"><tr style="color:#777;text-align:left;"><th style="' + TD + '">Day</th><th style="' + TD + '">Score</th><th style="' + TD + '">Day · month · annual · cycle line</th></tr>';
     list.forEach(function (g) {
       var on = _st.open === g.date, pct = Math.max(1, Math.round(100 * g.rank / g.n));
@@ -1319,7 +1393,9 @@
         + '<td style="' + TD + 'font-size:11px;line-height:1.5;">' + g.d.hexN + ' l' + g.d.line + ' ' + g.d.b + ' ' + relTag(g.d.r) + ' ' + sgn(g.d.tot)
         + ' · ' + g.m.b + ' ' + relTag(g.m.r) + ' ' + sgn(g.m.tot) + ' · ' + g.a.b + ' ' + relTag(g.a.r) + ' ' + sgn(g.a.tot) + ' · ' + g.c.b + ' ' + relTag(g.c.r) + ' ' + sgn(g.c.tot)
         + '<br>Luck ' + sgn(g.L.tot) + (g.warn.length ? ' <span style="color:#c62828;">⚠ ' + esc(g.warn.join('; ')) + '</span>' : '') + xkLine(g.date) + '</td></tr>';
-      if (on) h += '<tr><td colspan="3" style="padding:4px 4px 10px;">' + detail(chart, g) + '</td></tr>';
+      if (on) h += '<tr><td colspan="3" style="padding:4px 4px 10px;">' + mainBtns(g.date) + hexStrip(g.p, g.pers, false)
+        + (g.sell ? '<div style="font-size:12px;margin:2px 0 6px;color:' + (g.sell.lv ? '#2e7d32' : '#777') + ';">Selling · year and period ' + g.sell.level + (g.sell.why.length ? ': ' + esc(g.sell.why.join(' · ')) : '') + '</div>' : '')
+        + detail(chart, g) + '</td></tr>';
     });
     out.innerHTML = h + '</table><div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Score = cycle line + moved line of the annual + line of the month in the monthly hexagram + day line in the block hexagram (primary) + half of the same line in the day hexagram (secondary) (relation for the purpose, time of the branch against year, month and day, line text) + the three Luck. '
       + 'Relations: ' + Object.keys(REL).map(function (k) { return k + ' ' + REL[k]; }).join(', ') + '. Fixed weights (Edu, 10/11/2026). Test on 30 new events (11/11/2026): the event day ranks like a random day, so read the texts, not only the score.</div>';
@@ -1416,7 +1492,7 @@
         .catch(function (e) { say('The Assistant did not answer: ' + String(e && e.message || e), '#c62828'); done(); });
     } catch (e) { say('The Assistant did not answer: ' + String(e && e.message || e), '#c62828'); done(); }
   }
-  function cfFilm(chart, g) { return sphW(g.Pe, function () { return cfFilm_(chart, g); }); }
+  function cfFilm(chart, g) { return '<div style="padding:0 4px;">' + mainBtns(g.date) + '</div>' + sphW(g.Pe, function () { return cfFilm_(chart, g); }); }
   function cfFilm_(chart, g) {
     var sphOn = !!(U().sphGet && U().sphGet()), drawn = { d: 1, s2: 1 };   // action and outcome are drawn above: with a sphere the drawing carries their comment
     var p = g.th.p, dh = p.daily, me = g.th.pers, L = g.F.lines, ln = function (k, lbl) { var o = L[k]; return '<div style="' + S_ + '"><b>' + lbl + '</b> · ' + o.n + ' ' + esc(U().hexName ? U().hexName(o.n) : '') + ' line ' + o.l + ' ' + o.b + ' ' + relTag(o.r) + (o.s > 0 ? ' · favourable' : o.s < 0 ? ' · unfavourable' : ' · neutral') + '<br><i>«' + esc(cfStmt(o.n, o.l)) + '»</i></div>' + (sphOn && drawn[k] ? '' : cmtFixed(o.n, o.l, me, chart && chart.male)); };
