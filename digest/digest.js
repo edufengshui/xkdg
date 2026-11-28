@@ -193,8 +193,16 @@ function heluoShort(hl, t) {
 // «Commento»: a short reading in plain words written every morning by the Assistant (the xkdg-ai Worker, the same one
 // the app's chat uses), in the reader's language. If the Assistant does not answer, the short box (heluoShort) is used.
 const HL_L = {
-  it: { texts: 'Testi delle linee', who: 'Chi muove la giornata', what: 'Cosa si fa', end: 'Come finisce', comment: 'Commento', line: 'linea' },
-  en: { texts: 'Line texts', who: 'Who moves the day', what: 'What is done', end: 'How it ends', comment: 'Comment', line: 'line' }
+  it: { texts: 'Testi delle linee', who: 'Chi muove la giornata', what: 'Cosa si fa', end: 'Come finisce', comment: 'Commento', line: 'linea',
+        corr: 'Linea corrispondente', yy: 'yin con yang: legame speciale, favorevole', yyBoth: 'yin con yang, tutte e due al posto giusto: il legame più forte', yyOne: 'yin con yang, una al posto giusto: legame favorevole',
+        no: 'stessa polarità: non si rispondono, poco sostegno', sup: 'sostegno da', to: 'a',
+        flow: { 'that generates this': 'la genera, l’aiuto arriva da solo', 'this generates that': 'ne è generata, bisogna dare per primi', 'same': 'stesso elemento, si capiscono subito',
+                'that controls this': 'la controlla, sostegno con condizioni', 'this controls that': 'ne è controllata, guidi tu e il sostegno segue' } },
+  en: { texts: 'Line texts', who: 'Who moves the day', what: 'What is done', end: 'How it ends', comment: 'Comment', line: 'line',
+        corr: 'Corresponding line', yy: 'yin with yang: a special, favourable bond', yyBoth: 'yin with yang, both in their proper place: the bond at its strongest', yyOne: 'yin with yang, one in its proper place: a favourable bond',
+        no: 'same polarity: they do not answer each other, little support', sup: 'support from', to: 'to',
+        flow: { 'that generates this': 'it generates this line, the help comes by itself', 'this generates that': 'this line generates it, one has to give first', 'same': 'same element, they understand each other at once',
+                'that controls this': 'it controls this line, the support comes with conditions', 'this controls that': 'this line controls it, you lead and the support follows' } }
 };
 const HL_LANG = { it: 'Italian', en: 'English', fr: 'French', de: 'German', es: 'Spanish', vi: 'Vietnamese' };
 const AI_URL = process.env.XKDG_AI_URL || 'https://xkdg-ai.decumano16.workers.dev';
@@ -212,6 +220,8 @@ const HL_SYS = [
   // Rule of Edu, 26/11/2026 (the day shut at home by the snow, 55 line 6 «they peer through the gate and no longer perceive anyone»):
   // «a volte bisogna considerare che il testo possa descrivere una situazione oggettiva».
   '4b. A line text is not always advice or a risk to avoid: it can simply DESCRIBE what happens that day. When the image is concrete (a house shut, a journey, a meeting, something lost or received, someone arriving), say it also as a plain possible fact of the day ("you may well spend the day at home, seeing no one"), not only as a warning. This holds above all for how_it_ends. Keep it as a possibility, never a certainty.',
+  // Rule of Edu, 23/11 and 28/11/2026: the corresponding line (1-4, 2-5, 3-6).
+  '4c. corresponding_line: each of the three lines has a partner line. When its bond is good or excellent, that line is HELPED: the help comes from what the partner stands for (its relation, in life terms) and its text says how good the help is. Say in a few words who or what helps and for what; an excellent bond can soften an unfavourable text. When the bond is none, say nothing about it.',
   '5. Never invent facts, events or rules that are not in the data. No greeting, no title, no closing remark, no disclaimer. At most 120 words in all.'
 ].join('\n');
 async function heluoComment(hl, lang) {
@@ -219,7 +229,9 @@ async function heluoComment(hl, lang) {
   const sign = o => (o.s > 0 ? 'favourable' : o.s < 0 ? 'unfavourable' : 'neutral');
   const about = o => String((o.cmt && o.cmt.sphere && o.cmt.meaning) ? o.cmt.meaning : (o.who || '')).replace(/(,| and) the partner \((man|woman)\)/g, (m, j, g) => ((g === 'man') === (hl.gender !== 'F')) ? j + ' the partner' : '');
   const say = o => { const c = o.cmt; if (!c) return ''; return (c.side > 0 || (c.side === 0 && o.s >= 0)) ? (c.strong || '') : (c.weak || c.strong || ''); };
-  const L = o => o ? { relation: o.rel, about: about(o), text: o.text, text_sign: sign(o), helped_by_the_time: !!o.timely, written_comment: say(o) } : undefined;
+  const CQ = o => { const q = o && o.corr; if (!q) return undefined; return { relation: q.rel, bond: !q.yy ? 'none (same polarity: little support)' : (q.okHere && q.okThere) ? 'excellent (yin with yang, both in their proper place)' : 'good (yin with yang)',
+    support: q.yy ? 'from ' + q.rel + ' to ' + o.rel : undefined, how_it_arrives: q.yy ? (HL_L.en.flow[q.flow] || undefined) : undefined, text_of_that_line: q.yy ? q.text : undefined, text_sign: q.yy ? (q.s > 0 ? 'favourable' : q.s < 0 ? 'unfavourable' : 'neutral') : undefined }; };
+  const L = o => o ? { relation: o.rel, about: about(o), text: o.text, text_sign: sign(o), helped_by_the_time: !!o.timely, written_comment: say(o), corresponding_line: CQ(o) } : undefined;
   const lk = []; if (hl.luck) { const g = {}; [['heaven', 'Heaven Luck'], ['earth', 'Earth Luck'], ['fame', 'Fame Luck']].forEach(k => { if (hl.luck[k[0]]) g[hl.luck[k[0]]] = k[1]; });
     [hl.actor.up, hl.actor.lo, hl.outcome.up, hl.outcome.lo].forEach(tg => { if (g[tg] && lk.indexOf(g[tg]) < 0) lk.push(g[tg]); }); }
   const facts = { date: hl.date, reader: hl.gender === 'F' ? 'a woman' : 'a man', sphere_of_life: hl.sphere || 'General (the day as a whole)',
@@ -255,6 +267,12 @@ function heluoPlain(hl, t) {
   const c2 = (lbl, gz) => '<td style="text-align:center;padding:0 8px 0 0;font-size:11px;color:#777;">' + lbl + '<div style="font-size:16px;color:#222;line-height:1.25;">' + (gz ? esc(gz.charAt(0)) + '<br>' + esc(gz.charAt(1)) : '·<br>·') + '</div></td>';
   const mB = {}; mB[hl.actor.l] = '#6a1b9a'; mB[hl.action.l] = '#c62828'; const mD = {}; mD[hl.outcome.l] = '#c62828';
   const rows = [[W.who, hl.actor], [W.what, hl.action], [W.end, hl.outcome]];
+  // the corresponding line of each of the three lines (Edu 28/11/2026)
+  const cq = o => { const q = o.corr; if (!q) return null; return { head: W.corr + ' ' + q.l + ' · ' + q.b + ' ' + q.rel,
+    bond: !q.yy ? W.no : (q.okHere && q.okThere) ? W.yyBoth : (q.okHere || q.okThere) ? W.yyOne : W.yy, sup: q.yy ? W.sup + ' ' + q.rel + ' ' + W.to + ' ' + o.rel + (W.flow[q.flow] ? ' (' + W.flow[q.flow] + ')' : '') : '', text: q.yy ? q.text : '', good: q.yy }; };
+  const cqH = o => { const c = cq(o); return c ? '<div style="margin-top:2px;font-size:12px;color:' + (c.good ? '#2e7d32' : '#888') + ';">⇄ ' + esc(c.head) + ' — ' + esc(c.bond) + (c.sup ? '; ' + esc(c.sup) : '') + '.' +
+    (c.text ? ' <i style="color:#666;">«' + esc(c.text) + '»</i>' : '') + '</div>' : ''; };
+  const cqX = o => { const c = cq(o); return c ? '\n      <-> ' + c.head + ' — ' + c.bond + (c.sup ? '; ' + c.sup : '') + '.' + (c.text ? ' «' + c.text + '»' : '') : ''; };
   let h = '<div style="background:#f7f3ff;border:1px solid #b39ddb;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:14px;">' +
     '<b style="color:#4527a0;font-size:15px;">☯ ' + esc(ttl) + '</b>' +
     '<table style="border-collapse:collapse;margin-top:6px;"><tr>' +
@@ -262,9 +280,9 @@ function heluoPlain(hl, t) {
     '<td style="vertical-align:top;padding-right:14px;"><div style="font-size:11px;color:#777;margin-bottom:2px;">' + hl.actor.n + ' ' + esc(hl.actor.name) + '</div>' + hlHex(hl.block_yy, mB, hl.block_ln) + '</td>' +
     '<td style="vertical-align:top;"><div style="font-size:11px;color:#777;margin-bottom:2px;">' + hl.outcome.n + ' ' + esc(hl.outcome.name) + '</div>' + hlHex(hl.day_yy, mD, hl.day_ln) + '</td></tr></table>' +
     '<div style="margin-top:10px;"><b style="color:#4527a0;">' + W.texts + '</b></div>' +
-    rows.map(r => '<div style="margin-top:6px;"><span style="color:#666;font-size:12px;">' + r[0] + ' · ' + r[1].n + ' ' + esc(r[1].name) + ', ' + W.line + ' ' + r[1].l + ' · ' + esc(r[1].b) + ' <b style="color:' + (HL_RC[r[1].rel] || '#333') + ';">' + esc(r[1].rel) + '</b></span><br><i>«' + esc(r[1].text) + '»</i></div>').join('') +
+    rows.map(r => '<div style="margin-top:6px;"><span style="color:#666;font-size:12px;">' + r[0] + ' · ' + r[1].n + ' ' + esc(r[1].name) + ', ' + W.line + ' ' + r[1].l + ' · ' + esc(r[1].b) + ' <b style="color:' + (HL_RC[r[1].rel] || '#333') + ';">' + esc(r[1].rel) + '</b></span><br><i>«' + esc(r[1].text) + '»</i>' + cqH(r[1]) + '</div>').join('') +
     '<div style="margin-top:12px;padding:8px 10px;background:#fff8e1;border-left:3px solid #f9a825;color:#222;line-height:1.45;"><b style="color:#4527a0;">' + W.comment + '</b>' + hlCommentHtml(hl.comment) + '</div></div>';
-  const x = ttl + '\n  ' + W.texts + '\n' + rows.map(r => '    ' + r[0] + ' · ' + r[1].n + ' ' + r[1].name + ', ' + W.line + ' ' + r[1].l + ' · ' + r[1].b + ' ' + r[1].rel + '\n      «' + r[1].text + '»').join('\n') +
+  const x = ttl + '\n  ' + W.texts + '\n' + rows.map(r => '    ' + r[0] + ' · ' + r[1].n + ' ' + r[1].name + ', ' + W.line + ' ' + r[1].l + ' · ' + r[1].b + ' ' + r[1].rel + '\n      «' + r[1].text + '»' + cqX(r[1])).join('\n') +
     '\n\n  ' + W.comment + '\n' + String(hl.comment).replace(/\*\*/g, '').split(/\n/).map(l => '    ' + l).join('\n') + '\n\n';
   return { h: h, x: x };
 }

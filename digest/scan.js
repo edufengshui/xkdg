@@ -149,6 +149,21 @@ if (HL) {
       // the comment already written for the line (heluo-readings.js), in the sphere chosen, on the side the time gives it
       const UI = (w.XKDGHeluo && w.XKDGHeluo.ui) || {}, male = HL === 'M', me = (r.cycle || {}).person_element;
       const bzr = {}; (r.bazi_of_the_day_column_order || []).forEach(x => { const p = String(x).split(' '); bzr[p[0].toLowerCase()] = p[1]; });
+      // The corresponding line (1-4, 2-5, 3-6) of an active line (Edu 28/11/2026: «manca la relazione privilegiata fra le
+      // linee»; rules of 23/11/2026): yin with yang = a special, favourable bond, stronger when both stand in their proper
+      // place (yang on an odd line, yin on an even one); the support goes from the relation of that line to the relation
+      // of this one; the text of that line says how good it is.
+      const GEN = { Wood: 'Fire', Fire: 'Earth', Earth: 'Metal', Metal: 'Water', Water: 'Wood' }, CTL = { Wood: 'Earth', Earth: 'Water', Water: 'Fire', Fire: 'Metal', Metal: 'Wood' };
+      const RELN = { B: 'Brothers', C: 'Children', W: 'Wealth', G: 'Ghost', P: 'Parent' };
+      const corr = o => { if (!o) return o; try {
+          const d = NJ[o.n], k = o.l <= 3 ? o.l + 3 : o.l - 3, A = d.lines[o.l - 1], B = d.lines[k - 1];
+          let r = ''; try { const I = UI.sphereInfo && me ? UI.sphereInfo(o.n, k, me, male, '') : null; r = (I && I.rel) || ''; } catch (e) {}
+          const proper = (ln, yang) => (ln % 2 === 1) === !!yang;
+          const flow = A.el === B.el ? 'same' : GEN[B.el] === A.el ? 'that generates this' : GEN[A.el] === B.el ? 'this generates that' : CTL[B.el] === A.el ? 'that controls this' : 'this controls that';
+          let sc = 0; try { sc = w.XKDG_HELUO_SCORES[o.n].l[k] || 0; } catch (e) {}
+          let tx = ''; try { tx = w.XKDG_HELUO_TEXTS[o.n].lines[k].statement || ''; } catch (e) {}
+          o.corr = { l: k, b: B.branch || '', r: r, rel: RELN[r] || '', yy: !!A.yang !== !!B.yang, okHere: proper(o.l, A.yang), okThere: proper(k, B.yang), flow: flow, s: sc, text: tx };
+        } catch (e) {} return o; };
       const cmt = o => { if (!o || !UI.sphereInfo || !me) return o;
         let pv; try { if (UI.sphTime) pv = UI.sphTime({ y: (bzr.year || '').charAt(1), m: (bzr.month || '').charAt(1), d: (bzr.day || '').charAt(1) });
           const I = UI.sphereInfo(o.n, o.l, me, male);
@@ -165,7 +180,7 @@ if (HL) {
         n: h.hexagram, l: h.line, b: h.branch, rel: h.relation, s: h.text_score, text: h.text || '', role: h.role || '', relief: h.relieves_prevalence || '' }));
       out.heluo = { date: P.start, gender: HL, bazi: bz, luck: luck, age: r.age_heluo, phase: (r.cycle || {}).phase || '',
         cycle: ln(sc.cycle), annual: ln(sc.annual), annual_month: ln(bd.annual_line_of_the_month), month: ln(bd.month_line),
-        actor: cmt(ln(F.actor)), action: cmt(ln(ac.day_line)), outcome: cmt(ln(ac.outcome)),
+        actor: corr(cmt(ln(F.actor))), action: corr(cmt(ln(ac.day_line))), outcome: corr(cmt(ln(ac.outcome))),
         sphere: (function () { try { const k = UI.sphGet ? UI.sphGet() : ''; const E = k && w.XKDG_HELUO_READINGS.spheres.resolve(k, male, w.localStorage.getItem('xkdg_xk_variant_' + k) || ''); return E ? E.icon + ' ' + E.label + (E.variantLabel ? ' \u00b7 ' + E.variantLabel : '') : ''; } catch (e) { return ''; } })(),
         block_yy: F.actor ? yy(F.actor.hexagram) : null, day_yy: ac.outcome ? yy(ac.outcome.hexagram) : null,
         // branch and relation (B C W G P, for the person of the day) of all six lines, for the drawings (Edu 28/11/2026)
